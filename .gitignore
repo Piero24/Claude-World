@@ -1,6 +1,6 @@
 # Docker persistent volumes
 config/
-projects/
+workplace/
 
 # Docusaurus
 cloud-dev-docs/.docusaurus/
