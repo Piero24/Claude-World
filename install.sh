@@ -18,7 +18,7 @@ echo ""
 # ---- Ask for base path with confirmation loop ----
 while true; do
     echo "Where should Claude World store its data?"
-    echo "(Projects, configs, and shell settings will live here)"
+    echo "(Code, configs, and shell settings will live here)"
     echo ""
     read -p "Base path [$DEFAULT_PATH]: " BASE_PATH < /dev/tty
     BASE_PATH="${BASE_PATH:-$DEFAULT_PATH}"
@@ -50,9 +50,9 @@ echo ""
 
 # ---- Create directories ----
 echo "[1/3] Creating directories..."
-mkdir -p "$BASE_PATH"/{config,projects}
+mkdir -p "$BASE_PATH"/{config,workplace}
 echo "      ✓ $BASE_PATH/config"
-echo "      ✓ $BASE_PATH/projects"
+echo "      ✓ $BASE_PATH/workplace"
 
 # ---- Download init script ----
 echo ""
