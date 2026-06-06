@@ -1,0 +1,114 @@
+---
+sidebar_position: 2
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Server Setup
+
+<Tabs>
+  <TabItem value="docker" label="Docker" default>
+
+## Step 1: Create directories
+
+```bash
+mkdir -p claude-world/{config,projects}
+cd claude-world
+```
+
+## Step 2: Download the files
+
+```bash
+# Container init script
+curl -fsSL https://raw.githubusercontent.com/<user>/Claude-World/main/init.sh \
+  -o init.sh
+chmod +x init.sh
+
+# Plain Docker Compose file
+curl -fsSL https://raw.githubusercontent.com/<user>/Claude-World/main/compose.yaml \
+  -o compose.yaml
+```
+
+## Step 3: Edit the values
+
+```bash
+nano compose.yaml
+```
+
+Replace under the **dev** service:
+- `CHANGE_ME_WEB_PASSWORD` — login password for the ttyd web terminal
+- `CHANGE_ME_SUDO_PASSWORD` — sudo password, also used for SSH login
+- `CHANGE_ME_ANTHROPIC_KEY` — your [Anthropic API key](https://console.anthropic.com)
+- `CHANGE_ME_GIT_NAME` / `CHANGE_ME_GIT_EMAIL` — your Git identity
+- `CHANGE_ME_GITHUB_TOKEN` — GitHub [fine-grained PAT](https://github.com/settings/tokens?type=beta)
+- `TZ` — your timezone
+
+## Step 4: Start the container
+
+```bash
+docker compose up -d
+docker ps | grep claude-world
+```
+
+You should see one container: `claude-world`.
+
+## Step 5: Test direct access
+
+| Test | URL / Command |
+|------|---------------|
+| Web terminal | `http://<server-ip>:7681` — ttyd login (user: `abc`, pass: `PASSWORD`) |
+| SSH | `ssh abc@<server-ip> -p 2222` — login with `SUDO_PASSWORD` |
+
+If both work, the container is running correctly.
+
+  </TabItem>
+  <TabItem value="casaos" label="CasaOS">
+
+## Step 1: Run the installer
+
+The installer asks where to store data, downloads everything, and prints next steps:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/<user>/Claude-World/main/install.sh | bash
+```
+
+It creates `config/` and `projects/` under your chosen path (default: `/DATA/AppData/claude-world`).
+
+## Step 2: Edit the values
+
+```bash
+nano /DATA/AppData/claude-world/compose-casaos.yaml
+```
+
+Replace under the **dev** service:
+- `CHANGE_ME_WEB_PASSWORD` — login password for the ttyd web terminal
+- `CHANGE_ME_SUDO_PASSWORD` — sudo password, also used for SSH login
+- `CHANGE_ME_ANTHROPIC_KEY` — your [Anthropic API key](https://console.anthropic.com)
+- `CHANGE_ME_GIT_NAME` / `CHANGE_ME_GIT_EMAIL` — your Git identity
+- `CHANGE_ME_GITHUB_TOKEN` — GitHub [fine-grained PAT](https://github.com/settings/tokens?type=beta)
+- `TZ` — your timezone
+
+## Step 3: Import into CasaOS
+
+**App Store → Custom Install (top right) → Import → Paste the content of `compose-casaos.yaml` → Submit**
+
+## Step 4: Verify the container is running
+
+```bash
+docker ps | grep claude-world
+```
+
+You should see one container: `claude-world`.
+
+## Step 5: Test direct access
+
+| Test | URL / Command |
+|------|---------------|
+| Web terminal | `http://<casaos-ip>:7681` — ttyd login (user: `abc`, pass: `PASSWORD`) |
+| SSH | `ssh abc@<casaos-ip> -p 2222` — login with `SUDO_PASSWORD` |
+
+If both work, the container is running correctly.
+
+  </TabItem>
+</Tabs>

@@ -1,0 +1,124 @@
+name: claude-world
+services:
+  # ================================================================
+  # CLAUDE WORLD — Single-container cloud dev terminal
+  # ================================================================
+  dev:
+    image: lscr.io/linuxserver/webtop:ubuntu-xfce
+    container_name: claude-world
+    restart: unless-stopped
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: Europe/Rome
+      PASSWORD: CHANGE_ME_WEB_PASSWORD
+      SUDO_PASSWORD: CHANGE_ME_SUDO_PASSWORD
+      # --- Claude Code ---
+      # Leave empty to use Anthropic directly. Set to a third-party URL if needed.
+      ANTHROPIC_BASE_URL: ""
+      ANTHROPIC_AUTH_TOKEN: CHANGE_ME_ANTHROPIC_KEY
+      ANTHROPIC_MODEL: claude-opus-4-8
+      ANTHROPIC_DEFAULT_OPUS_MODEL: claude-opus-4-8
+      ANTHROPIC_DEFAULT_SONNET_MODEL: claude-sonnet-4-6
+      ANTHROPIC_DEFAULT_HAIKU_MODEL: claude-haiku-4-5
+      CLAUDE_CODE_SUBAGENT_MODEL: claude-haiku-4-5
+      CLAUDE_CODE_EFFORT_LEVEL: max
+      GIT_USER_NAME: CHANGE_ME_GIT_NAME
+      GIT_USER_EMAIL: CHANGE_ME_GIT_EMAIL
+      GITHUB_TOKEN: CHANGE_ME_GITHUB_TOKEN
+    x-casaos:
+      envs:
+        - container: PUID
+          description:
+            en_us: User ID for file permissions. Run 'id [USER]' on the host to get this.
+        - container: PGID
+          description:
+            en_us: Group ID for file permissions.
+        - container: TZ
+          description:
+            en_us: Timezone, e.g. Europe/Rome.
+        - container: PASSWORD
+          description:
+            en_us: Login password for the ttyd web terminal.
+        - container: SUDO_PASSWORD
+          description:
+            en_us: Sudo password inside the container. Also used for SSH login.
+        - container: ANTHROPIC_AUTH_TOKEN
+          description:
+            en_us: "Anthropic API key for Claude Code. Get one at console.anthropic.com."
+        - container: GITHUB_TOKEN
+          description:
+            en_us: "GitHub fine-grained PAT (Settings → Developer settings → Personal access tokens)."
+    ports:
+      - target: 7681
+        published: 7681
+        protocol: tcp
+      - target: 22
+        published: 2222
+        protocol: tcp
+    volumes:
+      - type: bind
+        source: /DATA/AppData/claude-world/config
+        target: /config
+      - type: bind
+        source: /DATA/AppData/claude-world/projects
+        target: /projects
+      - type: bind
+        source: /DATA/AppData/claude-world/init.sh
+        target: /etc/cont-init.d/99-claude-world.sh
+        read_only: true
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+
+  # ================================================================
+  # BESZEL AGENT — Sends system metrics to your Beszel hub
+  # ================================================================
+  beszel-agent:
+    image: henrygd/beszel-agent:latest
+    container_name: claude-world-beszel-agent
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      LISTEN: "45002"
+      KEY: CHANGE_ME_BESZEL_KEY
+      EXTRA_FILESYSTEMS: /dev/sda1
+    x-casaos:
+      envs:
+        - container: LISTEN
+          description:
+            en_us: Port the agent listens on. Must match the port configured in your Beszel hub for this system.
+        - container: KEY
+          description:
+            en_us: SSH public key from your Beszel hub (copy from the Add system dialog).
+        - container: EXTRA_FILESYSTEMS
+          description:
+            en_us: Additional filesystems to monitor (e.g. /dev/sda1 for main disk).
+    volumes:
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+        read_only: true
+
+x-casaos:
+  architectures:
+    - amd64
+    - arm64
+  main: dev
+  developer: LinuxServer.io
+  author: ClaudeWorld
+  icon: https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/webtop-logo.png
+  thumbnail: https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/webtop-logo.png
+  title:
+    en_us: Claude World
+  category: Development
+  description:
+    en_us: >
+      Claude World — A single-container cloud development environment
+      with a web-based terminal (ttyd) and SSH access.
+      Includes nvm, Node LTS, Claude Code, Python, Java, and build tools pre-installed.
+  tagline:
+    en_us: >
+      Web terminal + SSH in one container.
+      nvm, Node, Claude Code, Python — all pre-installed.
+  port_map: "7681"

@@ -1,0 +1,52 @@
+name: claude-world
+services:
+  # ================================================================
+  # CLAUDE WORLD — Single-container cloud dev terminal
+  # ================================================================
+  dev:
+    image: lscr.io/linuxserver/webtop:ubuntu-xfce
+    container_name: claude-world
+    restart: unless-stopped
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: Europe/Rome
+      PASSWORD: CHANGE_ME_WEB_PASSWORD
+      SUDO_PASSWORD: CHANGE_ME_SUDO_PASSWORD
+      # --- Claude Code ---
+      # Leave empty to use Anthropic directly. Set to https://api.deepseek.com/anthropic
+      # or https://openrouter.ai/api/anthropic to use a third-party provider.
+      ANTHROPIC_BASE_URL: ""
+      ANTHROPIC_AUTH_TOKEN: CHANGE_ME_ANTHROPIC_KEY
+      ANTHROPIC_MODEL: claude-opus-4-8
+      ANTHROPIC_DEFAULT_OPUS_MODEL: claude-opus-4-8
+      ANTHROPIC_DEFAULT_SONNET_MODEL: claude-sonnet-4-6
+      ANTHROPIC_DEFAULT_HAIKU_MODEL: claude-haiku-4-5
+      CLAUDE_CODE_SUBAGENT_MODEL: claude-haiku-4-5
+      CLAUDE_CODE_EFFORT_LEVEL: max
+      GIT_USER_NAME: CHANGE_ME_GIT_NAME
+      GIT_USER_EMAIL: CHANGE_ME_GIT_EMAIL
+      GITHUB_TOKEN: CHANGE_ME_GITHUB_TOKEN
+    ports:
+      - "7681:7681"
+      - "2222:22"
+    volumes:
+      - ./config:/config
+      - ./projects:/projects
+      - ./init.sh:/etc/cont-init.d/99-claude-world.sh:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  # ================================================================
+  # BESZEL AGENT — Sends system metrics to your Beszel hub
+  # ================================================================
+  beszel-agent:
+    image: henrygd/beszel-agent:latest
+    container_name: claude-world-beszel-agent
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      LISTEN: "45002"
+      KEY: CHANGE_ME_BESZEL_KEY
+      EXTRA_FILESYSTEMS: /dev/sda1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro

@@ -1,0 +1,94 @@
+---
+sidebar_position: 5
+---
+
+# Daily Workflow
+
+## Starting a session
+
+```bash
+# Open a terminal and connect via SSH
+ssh abc@<your-server> -p 2222
+# → Enter SUDO_PASSWORD
+# → You're connected.
+```
+
+Or open `http://<your-server>:7681` in a browser for the web terminal.
+
+## Persistent sessions with tmux
+
+The server auto-detects where you're connecting from and starts tmux only when needed.
+
+**Setup (one-time):** In Termius, edit your Claude World host → add environment variables:
+
+| Key | Value | Purpose |
+|-----|-------|---------|
+| `TMUX_AUTO` | `1` | Auto-attach tmux on connect |
+| `TMUX_TIMEOUT` | `2` | Kill detached session after N hours (`-1`=never, `0`=on detach) |
+
+With `TMUX_TIMEOUT=2`: if you disconnect and don't reconnect within 2 hours, the tmux session auto-cleans. No zombie sessions.
+
+**From Mac/PC:** connects normally — no tmux, close terminal = everything stops.
+
+```bash
+ssh abc@<server> -p 2222    # normal shell
+```
+
+**From iPhone/Termius:** auto-attaches to a persistent tmux session — switch apps, lose signal, everything keeps running.
+
+```bash
+ssh abc@<server> -p 2222    # → auto-attached to tmux "main" (Termius sent TMUX_AUTO=1)
+claude                       # runs inside tmux — survives disconnects
+```
+
+Next time you connect from Termius, you're back in the same session.
+
+**How it works:** Termius sends `TMUX_AUTO=1` via SSH. The server's `.bashrc` checks for it: if set → `exec tmux`, if not → normal shell. No typing, no flags, completely automatic.
+
+**Key commands inside tmux:**
+
+| Action | Command |
+|--------|---------|
+| Detach (leave running) | `Ctrl+B` then `D` |
+| Scroll up | `Ctrl+B` then `[` (arrows, `q` to quit) |
+| New session | `tmux new -A -s name` |
+| List sessions | `tmux ls` |
+| Manual attach anytime | `ta` (alias for `tmux new -A -s main`) |
+| Kill current session | `tmux kill-session` |
+| Kill all sessions | `tmux kill-server` |
+| Kill all except current | `tmux kill-session -a` |
+| **Keep session forever** | `tmux-keep` — prevents auto-cleanup for this session |
+
+:::tip Override the timeout
+
+Mid-task and realize you need more time? Run `tmux-keep` inside the tmux session. The cleanup daemon will skip it — it stays alive until you manually kill it, regardless of `TMUX_TIMEOUT`.
+
+:::
+
+## Working server-side
+
+You don't need a local machine. Everything runs on the server:
+
+- **Terminal**: web terminal at `http://<server>:7681` or SSH from anywhere
+- **Claude Code / long tasks**: inside tmux — survives disconnects
+- **Files**: live at `/projects/` — visible from terminal and SSH
+
+## Accessing from elsewhere
+
+| Method | URL / Command | Auth |
+|--------|---------------|------|
+| Web terminal (browser) | `http://<server>:7681` | Password |
+| SSH from anywhere | `ssh abc@<server> -p 2222` | Password |
+| SSH from iPhone (Termius) | Add host with port 2222 | Password |
+
+## Ending a session
+
+To end an SSH session, type `exit` or press `Ctrl+D`. To leave tmux running, detach with `Ctrl+B` then `D`.
+
+:::note
+
+If the server reboots, your SSH session ends — just connect again.
+
+tmux sessions survive disconnects but not server reboots. Reattach with `tmux attach -t main` after reboot.
+
+:::

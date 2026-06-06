@@ -1,0 +1,19 @@
+# Docker persistent volumes
+config/
+projects/
+
+# Docusaurus
+cloud-dev-docs/.docusaurus/
+cloud-dev-docs/build/
+cloud-dev-docs/node_modules/
+
+# Environment
+.env
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

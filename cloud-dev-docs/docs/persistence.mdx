@@ -1,0 +1,76 @@
+---
+sidebar_position: 6
+---
+
+# Persistence
+
+## What survives container rebuilds
+
+Everything in `/config` is a Docker volume — it lives on the host and survives `docker compose down && docker compose up -d`:
+
+```
+/config/
+├── .bashrc              # Shell config (PATH, aliases, env vars)
+├── .zshrc               # Zsh config
+├── .bash_profile        # Login shell hook
+├── .gitconfig           # Git identity + GitHub token
+├── .nvm/                # nvm + Node LTS installations
+├── .npm-global/         # Global npm packages (Claude Code)
+└── .local/              # User-local data
+```
+
+## What does NOT survive
+
+System packages installed via `apt-get` are lost on container rebuild. The init script (`init.sh`) reinstalls them on every boot:
+
+| Package | Why it's reinstalled |
+|---------|---------------------|
+| openssh-server | Runs the SSH daemon |
+| build-essential | gcc, make, etc. |
+| python3-pip, python3-venv | Python tooling |
+| default-jdk | Java |
+| git, curl, wget | Core utilities |
+| docker.io | Docker CLI |
+| tmux, zsh, nano | Shell + editor |
+| ttyd | Web terminal binary |
+
+Reinstall takes a few seconds — apt-get is fast.
+
+## The golden rule
+
+> If it lands in `/config`, it persists forever. If it needs `sudo` or `apt`, add it to `init.sh`.
+
+### Examples
+
+```bash
+# ✅ Persists — lives in /config
+npm install -g some-package
+pip install --user some-package
+
+# ❌ Does NOT persist — add to init.sh
+sudo apt-get install some-package
+```
+
+## Adding persistent packages
+
+To make an apt package survive rebuilds, add it to the `apt-get install` line in `init.sh`:
+
+```bash
+# In init.sh, find this line and add your package:
+apt-get install -y -qq \
+    openssh-server \
+    your-package-here \
+    ...
+```
+
+Then recreate the container:
+
+```bash
+docker compose up -d --force-recreate
+```
+
+## Environment variables
+
+Claude Code and Git config are written fresh on every boot from the env vars in `compose.yaml`. Edit `compose.yaml`, recreate the container, and changes take effect.
+
+See [Environment Variables](./env-vars) for the full reference.
