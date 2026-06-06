@@ -24,15 +24,15 @@ flowchart LR
     subgraph Host["Docker Host"]
         Dev["claude-world:7681\nttyd + SSH :2222"]
         Config["/config\n(home: shell, git, nvm, packages)"]
-        Projects["/projects\n(your code)"]
+        Workplace["/workplace\n(your code)"]
     end
 
     Internet --> Dev
     Dev --> Config
-    Dev --> Projects
+    Dev --> Workplace
 ```
 
-One container, everything in one place. `/config` is your persistent home — shell config, git identity, nvm, Node, Claude Code, all survive container rebuilds. `/projects` is your code.
+One container, everything in one place. `/config` is your persistent home — shell config, git identity, nvm, Node, Claude Code, all survive container rebuilds. `/workplace` is your code.
 
 ## Quickstart
 
@@ -51,7 +51,7 @@ git clone https://github.com/Piero24/Claude-World.git
 cd Claude-World
 
 # Create the persistent directories
-mkdir -p config projects
+mkdir -p config workplace
 
 # Edit values in compose.yaml, then:
 docker compose up -d

@@ -23,7 +23,7 @@ flowchart TB
     subgraph Host["Docker Host"]
         Dev["claude-world\n:7681 ttyd + :2222 SSH"]
         Config["/config\n(home: shell, git, nvm, packages)"]
-        Projects["/projects\n(your code)"]
+        Workplace["/workplace\n(your code)"]
     end
 
     subgraph Clients["Clients"]
@@ -33,7 +33,7 @@ flowchart TB
 
     Internet --> Dev
     Dev --> Config
-    Dev --> Projects
+    Dev --> Workplace
     Phone -->|"ssh -p 2222"| Dev
     Browser --> Internet
     Phone --> Internet

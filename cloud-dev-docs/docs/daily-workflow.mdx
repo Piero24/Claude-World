@@ -10,10 +10,12 @@ sidebar_position: 5
 # Open a terminal and connect via SSH
 ssh abc@<your-server> -p 2222
 # → Enter SUDO_PASSWORD
-# → You're connected.
+# → You're in /workplace and Claude is ready.
 ```
 
-Or open `http://<your-server>:7681` in a browser for the web terminal.
+No need to type `claude` manually — it launches automatically on SSH login. Exit Claude (`/exit` or `Ctrl+D`) and the SSH session ends.
+
+Or open `http://<your-server>:7681` in a browser for the web terminal (plain shell, Claude does not auto-launch).
 
 ## Persistent sessions with tmux
 
@@ -28,22 +30,22 @@ The server auto-detects where you're connecting from and starts tmux only when n
 
 With `TMUX_TIMEOUT=2`: if you disconnect and don't reconnect within 2 hours, the tmux session auto-cleans. No zombie sessions.
 
-**From Mac/PC:** connects normally — no tmux, close terminal = everything stops.
+**From Mac/PC:** Claude launches immediately — ask your question, get an answer, exit, done.
 
 ```bash
-ssh abc@<server> -p 2222    # normal shell
+ssh abc@<server> -p 2222    # → Claude auto-launches in /workplace
 ```
 
-**From iPhone/Termius:** auto-attaches to a persistent tmux session — switch apps, lose signal, everything keeps running.
+**From iPhone/Termius:** auto-attaches to a persistent tmux session — switch apps, lose signal, everything keeps running. Type `claude` inside tmux to start.
 
 ```bash
 ssh abc@<server> -p 2222    # → auto-attached to tmux "main" (Termius sent TMUX_AUTO=1)
-claude                       # runs inside tmux — survives disconnects
+claude                       # start Claude inside tmux — survives disconnects
 ```
 
 Next time you connect from Termius, you're back in the same session.
 
-**How it works:** Termius sends `TMUX_AUTO=1` via SSH. The server's `.bashrc` checks for it: if set → `exec tmux`, if not → normal shell. No typing, no flags, completely automatic.
+**How it works:** SSH login → `.bashrc` detects `$SSH_TTY` → `cd /workplace` then `exec claude`. Termius sends `TMUX_AUTO=1` via SSH which triggers tmux auto-attach instead — Claude doesn't auto-launch inside tmux (you start it manually to avoid recursion).
 
 **Key commands inside tmux:**
 
@@ -71,7 +73,7 @@ You don't need a local machine. Everything runs on the server:
 
 - **Terminal**: web terminal at `http://<server>:7681` or SSH from anywhere
 - **Claude Code / long tasks**: inside tmux — survives disconnects
-- **Files**: live at `/projects/` — visible from terminal and SSH
+- **Files**: live at `/workplace/` — visible from terminal and SSH
 
 ## Accessing from elsewhere
 
