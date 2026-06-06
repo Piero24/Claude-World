@@ -169,9 +169,13 @@ if [ -n "${GITHUB_TOKEN}" ] && [ "${GITHUB_TOKEN}" != "CHANGE_ME_GITHUB_TOKEN" ]
     echo "[claude-world] GitHub token configured (fine-grained PAT)"
 fi
 
-# ---- Default to /workplace on SSH login (not inside tmux) ----
-add_line 'if [ -z "$TMUX" ]; then cd /workplace; fi' /config/.bashrc
-add_line 'if [ -z "$TMUX" ]; then cd /workplace; fi' /config/.zshrc
+# ---- Default to /workplace on login ----
+add_line 'cd /workplace' /config/.bashrc
+add_line 'cd /workplace' /config/.zshrc
+
+# ---- Auto-launch Claude on direct SSH login (not inside tmux, not ttyd) ----
+add_line 'if [ -z "$TMUX" ] && [ -n "$SSH_TTY" ]; then exec claude; fi' /config/.bashrc
+add_line 'if [ -z "$TMUX" ] && [ -n "$SSH_TTY" ]; then exec claude; fi' /config/.zshrc
 
 # ---- tmux: auto-attach only when client sets TMUX_AUTO=1 (e.g. iPhone/Termius) ----
 # TMUX_TIMEOUT: hours before killing a detached session (-1=never, 0=on detach, N=after N hours)
