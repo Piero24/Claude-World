@@ -32,7 +32,7 @@ services:
       - "2222:22"
     volumes:
       - ./config:/config
-      - ./projects:/projects
+      - ./workplace:/workplace
       - ./init.sh:/etc/cont-init.d/99-claude-world.sh:ro
       - /var/run/docker.sock:/var/run/docker.sock
 

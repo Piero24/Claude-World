@@ -61,8 +61,8 @@ services:
         source: /DATA/AppData/claude-world/config
         target: /config
       - type: bind
-        source: /DATA/AppData/claude-world/projects
-        target: /projects
+        source: /DATA/AppData/claude-world/workplace
+        target: /workplace
       - type: bind
         source: /DATA/AppData/claude-world/init.sh
         target: /etc/cont-init.d/99-claude-world.sh
