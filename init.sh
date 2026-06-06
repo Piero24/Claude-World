@@ -169,9 +169,9 @@ if [ -n "${GITHUB_TOKEN}" ] && [ "${GITHUB_TOKEN}" != "CHANGE_ME_GITHUB_TOKEN" ]
     echo "[claude-world] GitHub token configured (fine-grained PAT)"
 fi
 
-# ---- Default to /projects on SSH login (not inside tmux) ----
-add_line 'if [ -z "$TMUX" ]; then cd /projects; fi' /config/.bashrc
-add_line 'if [ -z "$TMUX" ]; then cd /projects; fi' /config/.zshrc
+# ---- Default to /workplace on SSH login (not inside tmux) ----
+add_line 'if [ -z "$TMUX" ]; then cd /workplace; fi' /config/.bashrc
+add_line 'if [ -z "$TMUX" ]; then cd /workplace; fi' /config/.zshrc
 
 # ---- tmux: auto-attach only when client sets TMUX_AUTO=1 (e.g. iPhone/Termius) ----
 # TMUX_TIMEOUT: hours before killing a detached session (-1=never, 0=on detach, N=after N hours)
