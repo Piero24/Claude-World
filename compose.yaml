@@ -14,6 +14,8 @@ services:
       CUSTOM_USER: abc
       PASSWORD: CHANGE_ME_WEB_PASSWORD
       SUDO_PASSWORD: CHANGE_ME_SUDO_PASSWORD
+      TMUX_AUTO: "0"
+      TMUX_TIMEOUT: "-1"
       # --- Claude Code ---
       # Leave empty to use Anthropic directly. Set to https://api.deepseek.com/anthropic
       # or https://openrouter.ai/api/anthropic to use a third-party provider.

@@ -14,6 +14,8 @@ services:
       CUSTOM_USER: abc
       PASSWORD: CHANGE_ME_WEB_PASSWORD
       SUDO_PASSWORD: CHANGE_ME_SUDO_PASSWORD
+      TMUX_AUTO: "0"
+      TMUX_TIMEOUT: "-1"
       # --- Claude Code ---
       # Leave empty to use Anthropic directly. Set to a third-party URL if needed.
       ANTHROPIC_BASE_URL: ""
@@ -47,6 +49,12 @@ services:
         - container: SUDO_PASSWORD
           description:
             en_us: Sudo password inside the container. Also used for SSH login.
+        - container: TMUX_AUTO
+          description:
+            en_us: "Enable persistent tmux sessions (0 = disabled, 1 = enabled)."
+        - container: TMUX_TIMEOUT
+          description:
+            en_us: "Hours before detached tmux sessions are killed (-1 = never)."
         - container: ANTHROPIC_AUTH_TOKEN
           description:
             en_us: "Anthropic API key for Claude Code. Get one at console.anthropic.com."

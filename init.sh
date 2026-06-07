@@ -172,7 +172,7 @@ if [ -f ~/.bashrc ]; then
 fi
 BASH_PROFILE
 
-# ---- Claude Code API env vars (from Compose env) ----
+# ---- Claude Code API & Session env vars (from Compose env) ----
 # Written fresh on every boot — edit compose.yaml to change values
 for dsrcfile in /config/.bashrc /config/.zshrc; do
     sed -i '/^# >>> Claude Code/,/^# <<< Claude Code/d' "$dsrcfile" 2>/dev/null
@@ -186,6 +186,8 @@ export ANTHROPIC_DEFAULT_SONNET_MODEL=${ANTHROPIC_DEFAULT_SONNET_MODEL:-claude-s
 export ANTHROPIC_DEFAULT_HAIKU_MODEL=${ANTHROPIC_DEFAULT_HAIKU_MODEL:-claude-haiku-4-5}
 export CLAUDE_CODE_SUBAGENT_MODEL=${CLAUDE_CODE_SUBAGENT_MODEL:-claude-haiku-4-5}
 export CLAUDE_CODE_EFFORT_LEVEL=${CLAUDE_CODE_EFFORT_LEVEL:-max}
+export TMUX_AUTO=${TMUX_AUTO:-0}
+export TMUX_TIMEOUT=${TMUX_TIMEOUT:--1}
 # <<< Claude Code
 CLAUDECODE
 done
@@ -218,6 +220,11 @@ for rcfile in /config/.bashrc /config/.zshrc; do
     sed -i '/^# >>> Claude World Auto-Launch/,/^# <<< Claude World Auto-Launch/d' "$rcfile" 2>/dev/null
     cat >> "$rcfile" << 'AUTOLAUNCH'
 # >>> Claude World Auto-Launch (written by init.sh — do not edit)
+# Clean up forwarded/stale tmux sockets from SSH client forwarding
+if [ -n "$TMUX" ] && [ ! -S "$(echo "$TMUX" | cut -d, -f1)" ]; then
+    unset TMUX
+fi
+
 cd /workplace
 if [ "$TMUX_AUTO" = "1" ] && [ -z "$TMUX" ]; then
     exec tmux new-session -A -s main
