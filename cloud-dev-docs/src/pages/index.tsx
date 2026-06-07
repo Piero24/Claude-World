@@ -27,12 +27,12 @@ function HomepageHeader() {
   );
 }
 
-export default function Home(): JSX.Element {
+export default function Home() {
   const {siteConfig} = useDocusaurusContext();
   return (
     <Layout
       title={siteConfig.title}
-      description="A single-container cloud development environment — web terminal + SSH">
+      description="A single-container cloud development environment with web terminal and SSH">
       <HomepageHeader />
       <main>
         <div className="container" style={{padding: '3rem 0'}}>
@@ -41,14 +41,14 @@ export default function Home(): JSX.Element {
               <h3>🖥️ Web Terminal</h3>
               <p>
                 Full bash shell in your browser via ttyd. Password-protected,
-                works from any device — no client needed.
+                works from any device, no client needed.
               </p>
             </div>
             <div className="col col--4">
               <h3>🔧 Pre-installed Tools</h3>
               <p>
                 nvm + Node LTS, Claude Code, Python 3, Java, Docker CLI,
-                build-essential, tmux, zsh — ready on first boot.
+                build-essential, tmux, zsh ready on first boot.
               </p>
             </div>
             <div className="col col--4">

@@ -76,17 +76,17 @@ docker compose up -d
 
 | Method | URL / Command | Auth |
 |--------|---------------|------|
-| Web terminal | `http://<server-ip>:7681` | `PASSWORD` |
+| Web terminal | `http://<server-ip>:7681` | `PASSWORD`, Claude auto-launches |
 | SSH | `ssh abc@<server-ip> -p 2222` | `SUDO_PASSWORD`, Claude auto-launches |
 
 ## Key features
 
 - **One container for dev**: web terminal + SSH. No desktop, no separate VS Code
-- **Claude auto-launch**: SSH in and Claude is ready in `/workplace`. No typing, immediately productive
+- **Claude auto-launch**: connect via SSH or web terminal and Claude is ready in `/workplace`. Exit Claude to get a shell prompt
 - **Monitoring**: Beszel agent feeds system metrics to your existing hub
 - **Web terminal (ttyd)**: full bash shell in your browser, password-protected
-- **SSH access**: connect from Mac, PC, or phone (iPhone/Termius with persistent tmux)
-- **Persistent sessions**: tmux auto-attach from iPhone/Termius via `TMUX_AUTO=1`, sessions survive disconnects
+- **SSH access**: connect from local devices like PC, Mac, or iPhone
+- **Persistent tmux sessions**: your work survives disconnects and app switches, especially useful on mobile
 - **Configurable cleanup**: `TMUX_TIMEOUT` auto-kills detached sessions after N hours, `tmux-keep` overrides it
 - **Persistent packages**: everything in `/config` survives container rebuilds
 - **No Mac required**: work entirely from a browser and SSH

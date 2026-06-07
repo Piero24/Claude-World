@@ -8,9 +8,15 @@ A single-container cloud development environment with web terminal and SSH, ever
 
 ## What You Get
 
+- **Claude auto-launches on connect**: open a web terminal or SSH in and Claude is ready in `/workplace`, no setup needed
 - **Web terminal in your browser**: full bash shell via ttyd, password-protected, from any device
-- **SSH access**: connect from Mac, PC, or phone (iPhone/Termius with persistent tmux)
+- **SSH access**: connect from local devices like PC, Mac, or iPhone
+- **Persistent tmux sessions**: your work survives disconnects and app switches, especially useful on mobile
 - **Everything in one container**: no desktop, no separate VS Code, no extra services
+
+:::tip[Just want a shell?]
+Set `NO_CLAUDE=1` to skip the auto-launch: `NO_CLAUDE=1 ssh abc@<server> -p 2222`
+:::
 
 ## Architecture
 

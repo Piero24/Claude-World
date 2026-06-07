@@ -96,3 +96,38 @@ After setting these and recreating the container, `git clone`, `git push`, and `
 | `PUID` | `1000` | User ID for file permissions |
 | `PGID` | `1000` | Group ID for file permissions |
 | `TZ` | `Europe/Rome` | Timezone |
+
+## Session behavior
+
+These variables are **not** set in `compose.yaml`. They are passed at connection time (by your SSH client or in the shell) to control what happens when you log in.
+
+| Env var | Default | What it does |
+|---------|---------|--------------|
+| `NO_CLAUDE` | *(unset)* | Set to `1` to skip Claude auto-launch and get a plain shell |
+| `TMUX_AUTO` | *(unset)* | Set to `1` to auto-attach a persistent tmux session on login |
+| `TMUX_TIMEOUT` | *(unset)* | Hours before a detached tmux session is auto-killed (`-1` = never, `0` = on detach, `N` = after N hours) |
+
+### Claude auto-launch
+
+Claude launches automatically on every login (both SSH and web terminal). You land in `/workplace` with Claude ready. Exiting Claude (`/exit` or `Ctrl+D`) returns you to a normal shell prompt.
+
+To skip the auto-launch:
+
+```bash
+NO_CLAUDE=1 ssh abc@<server> -p 2222    # → plain shell, no Claude
+```
+
+### Persistent sessions with tmux
+
+Set `TMUX_AUTO=1` on your SSH client (e.g. Termius environment variables) to wrap every session in tmux. When you disconnect, tmux keeps running. When you reconnect, you reattach to the same session with Claude still there.
+
+```bash
+# In Termius: set TMUX_AUTO=1 in the host's environment variables
+# In a terminal:
+TMUX_AUTO=1 ssh abc@<server> -p 2222    # → auto-attached to tmux "main"
+```
+
+Use `TMUX_TIMEOUT` to auto-clean detached sessions. For example, `TMUX_TIMEOUT=2` kills sessions that have been detached for more than 2 hours. Run `tmux-keep` inside a session to override this and keep it alive indefinitely.
+
+See [Daily Workflow](./daily-workflow) for full tmux usage.
+

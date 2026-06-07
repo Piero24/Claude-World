@@ -13,9 +13,9 @@ ssh abc@<your-server> -p 2222
 # → You're in /workplace and Claude is ready.
 ```
 
-No need to type `claude` manually: it launches automatically on SSH login. Exit Claude (`/exit` or `Ctrl+D`) and the SSH session ends.
+Claude launches automatically on every login (SSH and web terminal). Exit Claude (`/exit` or `Ctrl+D`) and you're dropped to a normal shell prompt.
 
-Or open `http://<your-server>:7681` in a browser for the web terminal (plain shell, Claude does not auto-launch).
+Open `http://<your-server>:7681` in a browser for the web terminal, or SSH in. Both launch Claude in `/workplace` automatically.
 
 ## Persistent sessions with tmux
 
@@ -36,16 +36,16 @@ With `TMUX_TIMEOUT=2`: if you disconnect and don't reconnect within 2 hours, the
 ssh abc@<server> -p 2222    # → Claude auto-launches in /workplace
 ```
 
-**From iPhone/Termius:** auto-attaches to a persistent tmux session, switch apps, lose signal, everything keeps running. Type `claude` inside tmux to start.
+**From iPhone/Termius:** auto-attaches to a persistent tmux session. Claude launches automatically inside tmux. Switch apps, lose signal, everything keeps running.
 
 ```bash
 ssh abc@<server> -p 2222    # → auto-attached to tmux "main" (Termius sent TMUX_AUTO=1)
-claude                       # start Claude inside tmux, survives disconnects
+                             # → Claude launches automatically inside tmux
 ```
 
-Next time you connect from Termius, you're back in the same session.
+Next time you connect from Termius, you reattach to the same session with Claude still running.
 
-**How it works:** SSH login → `.bashrc` detects `$SSH_TTY` → `cd /workplace` then `exec claude`. Termius sends `TMUX_AUTO=1` via SSH which triggers tmux auto-attach instead. Claude doesn't auto-launch inside tmux (you start it manually to avoid recursion).
+**How it works:** Login (SSH or web terminal) sources `.bashrc`: `cd /workplace`, then if `TMUX_AUTO=1` is set, `exec tmux new-session -A -s main` wraps the session in tmux first. Finally, `claude` launches. Exiting Claude returns you to a shell prompt. Reconnecting with tmux reattaches to the running session (Claude still there).
 
 **Key commands inside tmux:**
 
@@ -85,7 +85,12 @@ You don't need a local machine. Everything runs on the server:
 
 ## Ending a session
 
-To end an SSH session, type `exit` or press `Ctrl+D`. To leave tmux running, detach with `Ctrl+B` then `D`.
+Exiting works in two steps:
+
+1. **Exit Claude**: type `/exit` or press `Ctrl+D`. You're dropped to a normal shell prompt in `/workplace`
+2. **Exit shell**: type `exit` or press `Ctrl+D` again. The SSH or web terminal session ends
+
+If you're inside tmux, detach instead of exiting to keep the session alive: press `Ctrl+B` then `D`. Next time you connect, you reattach to the same session.
 
 :::note
 

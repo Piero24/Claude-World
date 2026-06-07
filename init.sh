@@ -169,19 +169,34 @@ if [ -n "${GITHUB_TOKEN}" ] && [ "${GITHUB_TOKEN}" != "CHANGE_ME_GITHUB_TOKEN" ]
     echo "[claude-world] GitHub token configured (fine-grained PAT)"
 fi
 
-# ---- Default to /workplace on login ----
-add_line 'cd /workplace' /config/.bashrc
-add_line 'cd /workplace' /config/.zshrc
+# ---- Auto-launch: cd + tmux + claude ----
+# Written fresh on every boot (marker-based, same pattern as Claude Code env block).
+# Order: cd /workplace → tmux (if requested) → claude.
+#   - [ -z "$TMUX" ] prevents tmux-inside-tmux recursion.
+#   - `claude` (not `exec claude`) so exiting Claude returns to a shell prompt.
+#   - NO_CLAUDE=1 skips Claude (e.g. NO_CLAUDE=1 ssh ...).
+for rcfile in /config/.bashrc /config/.zshrc; do
+    # Clean up legacy add_line entries from older init.sh versions
+    sed -i '/^cd \/workplace$/d' "$rcfile" 2>/dev/null
+    sed -i '/if \[ -z "\$NO_CLAUDE" \]; then exec claude/d' "$rcfile" 2>/dev/null
+    sed -i '/TMUX_AUTO.*exec tmux new/d' "$rcfile" 2>/dev/null
 
-# ---- Auto-launch Claude on every login ----
-# Set NO_CLAUDE=1 to skip (e.g. NO_CLAUDE=1 ssh ...)
-add_line 'if [ -z "$NO_CLAUDE" ]; then exec claude; fi' /config/.bashrc
-add_line 'if [ -z "$NO_CLAUDE" ]; then exec claude; fi' /config/.zshrc
+    # Remove old marker block, then rewrite
+    sed -i '/^# >>> Claude World Auto-Launch/,/^# <<< Claude World Auto-Launch/d' "$rcfile" 2>/dev/null
+    cat >> "$rcfile" << 'AUTOLAUNCH'
+# >>> Claude World Auto-Launch (written by init.sh — do not edit)
+cd /workplace
+if [ "$TMUX_AUTO" = "1" ] && [ -z "$TMUX" ]; then
+    exec tmux new-session -A -s main
+fi
+if [ -z "$NO_CLAUDE" ]; then
+    claude
+fi
+# <<< Claude World Auto-Launch
+AUTOLAUNCH
+done
 
-# ---- tmux: auto-attach only when client sets TMUX_AUTO=1 (e.g. iPhone/Termius) ----
-# TMUX_TIMEOUT: hours before killing a detached session (-1=never, 0=on detach, N=after N hours)
-add_line 'if [ "$TMUX_AUTO" = "1" ] && [ -z "$TMUX" ]; then exec tmux new -A -s main; fi' /config/.bashrc
-add_line 'if [ "$TMUX_AUTO" = "1" ] && [ -z "$TMUX" ]; then exec tmux new -A -s main; fi' /config/.zshrc
+# ---- tmux aliases ----
 add_line 'alias ta="tmux new -A -s main"' /config/.bashrc
 add_line 'alias ta="tmux new -A -s main"' /config/.zshrc
 add_line 'alias tmux-keep="tmux setenv TMUX_KEEP 1 && echo \"Session marked keep — will never be auto-cleaned\""' /config/.bashrc
