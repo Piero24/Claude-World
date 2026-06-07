@@ -93,11 +93,11 @@ fi
 if ! pgrep -f "ttyd.*7681" >/dev/null 2>&1; then
     echo "[claude-world] Starting ttyd on port 7681..."
     if [ -n "$PASSWORD" ] && [ "$PASSWORD" != "CHANGE_ME_WEB_PASSWORD" ]; then
-        su - "$USER" -c "nohup /usr/local/bin/ttyd -p 7681 -c \"${USER}:${PASSWORD}\" bash -l > /config/ttyd.log 2>&1 &"
+        su - "$USER" -c "export HOME=/config && nohup /usr/local/bin/ttyd -p 7681 -w /workplace -c \"${USER}:${PASSWORD}\" bash -l > /config/ttyd.log 2>&1 &"
         echo "[claude-world] ttyd running on http://0.0.0.0:7681"
     else
         echo "[claude-world] WARNING: PASSWORD is empty or still the placeholder — ttyd started WITHOUT auth!"
-        su - "$USER" -c "nohup /usr/local/bin/ttyd -p 7681 bash -l > /config/ttyd.log 2>&1 &"
+        su - "$USER" -c "export HOME=/config && nohup /usr/local/bin/ttyd -p 7681 -w /workplace bash -l > /config/ttyd.log 2>&1 &"
     fi
 else
     echo "[claude-world] ttyd already running, skipping."
@@ -131,20 +131,20 @@ echo "[claude-world] SSH server started."
 # ---- nvm + Node LTS (persists to /config/.nvm) ----
 if [ ! -d /config/.nvm ]; then
     echo "[claude-world] Installing nvm + Node LTS..."
-    su - "$USER" -c 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash'
-    su - "$USER" -c 'export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && nvm install --lts'
+    su - "$USER" -c 'export HOME=/config && curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash'
+    su - "$USER" -c 'export HOME=/config && export NVM_DIR="/config/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && nvm install --lts'
 else
     echo "[claude-world] nvm already installed, skipping."
 fi
 
 # ---- npm global prefix → /config (env var, not .npmrc — avoids nvm conflict) ----
-su - "$USER" -c 'mkdir -p ~/.npm-global'
+su - "$USER" -c 'export HOME=/config && mkdir -p ~/.npm-global'
 
 # ---- Claude Code ----
 if [ -d /config/.nvm ]; then
-    if ! su - "$USER" -c 'export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && which claude 2>/dev/null'; then
+    if ! su - "$USER" -c 'export HOME=/config && export NVM_DIR="/config/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && which claude 2>/dev/null'; then
         echo "[claude-world] Installing Claude Code..."
-        su - "$USER" -c 'export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && npm install -g @anthropic-ai/claude-code'
+        su - "$USER" -c 'export HOME=/config && export NVM_DIR="/config/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && npm install -g @anthropic-ai/claude-code'
     else
         echo "[claude-world] Claude Code already installed, skipping."
     fi
@@ -188,13 +188,13 @@ done
 
 # ---- Git / GitHub config (from Compose env) ----
 if [ -n "${GIT_USER_NAME}" ] && [ "${GIT_USER_NAME}" != "CHANGE_ME_GIT_NAME" ]; then
-    su - "$USER" -c "git config --global user.name '${GIT_USER_NAME}'"
-    su - "$USER" -c "git config --global user.email '${GIT_USER_EMAIL}'"
+    su - "$USER" -c "export HOME=/config && git config --global user.name '${GIT_USER_NAME}'"
+    su - "$USER" -c "export HOME=/config && git config --global user.email '${GIT_USER_EMAIL}'"
     echo "[claude-world] Git configured: ${GIT_USER_NAME} <${GIT_USER_EMAIL}>"
 fi
 
 if [ -n "${GITHUB_TOKEN}" ] && [ "${GITHUB_TOKEN}" != "CHANGE_ME_GITHUB_TOKEN" ]; then
-    su - "$USER" -c "git config --global url.'https://oauth2:${GITHUB_TOKEN}@github.com/'.insteadOf 'https://github.com/'"
+    su - "$USER" -c "export HOME=/config && git config --global url.'https://oauth2:${GITHUB_TOKEN}@github.com/'.insteadOf 'https://github.com/'"
     echo "[claude-world] GitHub token configured (fine-grained PAT)"
 fi
 
