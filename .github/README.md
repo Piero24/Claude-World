@@ -1,6 +1,21 @@
-# Claude World
+<p align="center">
+  <img src=".github/claude_world_logo.png" alt="Claude World Logo" width="200">
+</p>
 
-One container, one terminal. A Docker Compose stack that gives you a complete, persistent cloud development workspace with web-based terminal and SSH, all your tools pre-installed.
+<h1 align="center">Claude World</h1>
+
+<p align="center">
+  <a href="https://github.com/Piero24/Claude-World/stargazers"><img src="https://img.shields.io/github/stars/Piero24/Claude-World?style=flat-square&color=da7d3a" alt="GitHub stars"></a>
+  <a href="https://github.com/Piero24/Claude-World/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Piero24/Claude-World?style=flat-square&color=da7d3a" alt="License"></a>
+  <a href="https://github.com/Piero24/Claude-World"><img src="https://img.shields.io/badge/platform-Docker%20%7C%20CasaOS-blue?style=flat-square" alt="Platform"></a>
+  <a href="https://github.com/Piero24/Claude-World"><img src="https://img.shields.io/badge/arch-amd64%20%7C%20arm64-lightgrey?style=flat-square" alt="Architecture"></a>
+</p>
+
+<p align="center">
+  One container, one terminal. SSH in and Claude is ready.
+</p>
+
+---
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Piero24/Claude-World/main/install.sh | bash
