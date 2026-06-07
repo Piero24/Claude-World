@@ -4,8 +4,8 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'Claude World',
-  tagline: 'A single-container cloud development environment — web terminal + SSH, accessible from anywhere.',
-  favicon: 'img/logo.svg',
+  tagline: 'A single-container cloud development environment: web terminal + SSH, accessible from anywhere.',
+  favicon: 'img/claude_world_logo.png',
 
   future: {
     v4: true,
@@ -50,7 +50,7 @@ const config: Config = {
   ],
 
   themeConfig: {
-    image: 'img/logo.svg',
+    image: 'img/claude_world_logo.png',
     colorMode: {
       defaultMode: 'dark',
       respectPrefersColorScheme: true,
@@ -59,7 +59,7 @@ const config: Config = {
       title: 'Claude World',
       logo: {
         alt: 'Claude World Logo',
-        src: 'img/logo.svg',
+        src: 'img/claude_world_logo.png',
       },
       items: [
         {

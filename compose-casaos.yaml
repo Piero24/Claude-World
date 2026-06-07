@@ -107,8 +107,8 @@ x-casaos:
   main: dev
   developer: LinuxServer.io
   author: ClaudeWorld
-  icon: https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/webtop-logo.png
-  thumbnail: https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/webtop-logo.png
+  icon: https://raw.githubusercontent.com/Piero24/Claude-World/main/.github/claude_world_logo.png
+  thumbnail: https://raw.githubusercontent.com/Piero24/Claude-World/main/.github/claude_world_logo.png
   title:
     en_us: Claude World
   category: Development

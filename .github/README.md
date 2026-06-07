@@ -1,21 +1,6 @@
-<p align="center">
-  <img src=".github/claude_world_logo.png" alt="Claude World Logo" width="200">
-</p>
+# Claude World
 
-<h1 align="center">Claude World</h1>
-
-<p align="center">
-  <a href="https://github.com/Piero24/Claude-World/stargazers"><img src="https://img.shields.io/github/stars/Piero24/Claude-World?style=flat-square&color=da7d3a" alt="GitHub stars"></a>
-  <a href="https://github.com/Piero24/Claude-World/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Piero24/Claude-World?style=flat-square&color=da7d3a" alt="License"></a>
-  <a href="https://github.com/Piero24/Claude-World"><img src="https://img.shields.io/badge/platform-Docker%20%7C%20CasaOS-blue?style=flat-square" alt="Platform"></a>
-  <a href="https://github.com/Piero24/Claude-World"><img src="https://img.shields.io/badge/arch-amd64%20%7C%20arm64-lightgrey?style=flat-square" alt="Architecture"></a>
-</p>
-
-<p align="center">
-  One container, one terminal. SSH in and Claude is ready.
-</p>
-
----
+One container, one terminal. A Docker Compose stack that gives you a complete, persistent cloud development workspace with web-based terminal and SSH, all your tools pre-installed.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Piero24/Claude-World/main/install.sh | bash
@@ -81,13 +66,14 @@ docker compose up -d
 
 ## Key features
 
+- **One container for dev**: web terminal + SSH. No desktop, no separate VS Code
 - **Claude auto-launch**: SSH in and Claude is ready in `/workplace`. No typing, immediately productive
+- **Monitoring**: Beszel agent feeds system metrics to your existing hub
 - **Web terminal (ttyd)**: full bash shell in your browser, password-protected
 - **SSH access**: connect from Mac, PC, or phone (iPhone/Termius with persistent tmux)
 - **Persistent sessions**: tmux auto-attach from iPhone/Termius via `TMUX_AUTO=1`, sessions survive disconnects
 - **Configurable cleanup**: `TMUX_TIMEOUT` auto-kills detached sessions after N hours, `tmux-keep` overrides it
 - **Persistent packages**: everything in `/config` survives container rebuilds
-- **Monitoring**: Beszel agent feeds system metrics to your existing hub
 - **No Mac required**: work entirely from a browser and SSH
 
 ## Tools pre-installed
