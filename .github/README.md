@@ -1,5 +1,5 @@
 <p align="center">
-  <img src=".github/claude_world_logo.png" alt="Claude World Logo" width="200">
+  <img src="claude_world_logo.png" alt="Claude World Logo" width="200">
 </p>
 
 <h1 align="center">Claude World</h1>
@@ -25,7 +25,7 @@ curl -fsSL https://raw.githubusercontent.com/Piero24/Claude-World/main/install.s
 
 | Service | Image | Purpose |
 |---------|-------|---------|
-| **dev** | `linuxserver/webtop:ubuntu-xfce` | Web terminal (ttyd) + SSH + all dev tools |
+| **dev** | `linuxserver/baseimage-ubuntu:noble` | Web terminal (ttyd) + SSH + all dev tools |
 | **beszel-agent** | `henrygd/beszel-agent:latest` | System metrics → your existing Beszel hub |
 
 Pre-installed: nvm + Node LTS, Claude Code, Python 3, Java, Docker CLI, build-essential, tmux, zsh.
