@@ -11,6 +11,7 @@ services:
       PUID: "1000"
       PGID: "1000"
       TZ: Europe/Rome
+      CUSTOM_USER: abc
       PASSWORD: CHANGE_ME_WEB_PASSWORD
       SUDO_PASSWORD: CHANGE_ME_SUDO_PASSWORD
       # --- Claude Code ---
@@ -37,6 +38,9 @@ services:
         - container: TZ
           description:
             en_us: Timezone, e.g. Europe/Rome.
+        - container: CUSTOM_USER
+          description:
+            en_us: Custom username (defaults to 'abc' if empty).
         - container: PASSWORD
           description:
             en_us: Login password for the ttyd web terminal.

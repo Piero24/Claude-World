@@ -7,10 +7,31 @@
 # ================================================================
 
 # ---- User Setup ----
-# We use the default linuxserver user 'abc' for everything to ensure maximum
-# compatibility with the pre-configured desktop and services.
+# We default to the linuxserver user 'abc'. If CUSTOM_USER is defined in the
+# environment (and not 'abc'), we rename the 'abc' user and group accordingly.
 USER="abc"
-echo "[claude-world] Running as default user: '$USER'"
+if [ -n "$CUSTOM_USER" ] && [ "$CUSTOM_USER" != "abc" ]; then
+    echo "[claude-world] Custom username requested: '$CUSTOM_USER'"
+    if id -u abc >/dev/null 2>&1; then
+        echo "[claude-world] Renaming default user 'abc' to '$CUSTOM_USER'..."
+        usermod -l "$CUSTOM_USER" abc
+        groupmod -n "$CUSTOM_USER" abc
+        sed -i "s/\babc\b/$CUSTOM_USER/g" /etc/subuid /etc/subgid 2>/dev/null
+        USER="$CUSTOM_USER"
+    else
+        if id -u "$CUSTOM_USER" >/dev/null 2>&1; then
+            USER="$CUSTOM_USER"
+        else
+            echo "[claude-world] ERROR: neither 'abc' nor '$CUSTOM_USER' found. Falling back to abc."
+        fi
+    fi
+fi
+
+# Ensure the user has a valid login shell (LSIO default is /bin/false)
+echo "[claude-world] Configuring shell for '$USER' to /bin/bash..."
+usermod -s /bin/bash "$USER"
+
+echo "[claude-world] Running as user: '$USER'"
 
 # ---- Helper: add line to file if not already present ----
 add_line() {

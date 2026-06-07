@@ -11,6 +11,7 @@ services:
       PUID: "1000"
       PGID: "1000"
       TZ: Europe/Rome
+      CUSTOM_USER: abc
       PASSWORD: CHANGE_ME_WEB_PASSWORD
       SUDO_PASSWORD: CHANGE_ME_SUDO_PASSWORD
       # --- Claude Code ---
