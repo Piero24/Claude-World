@@ -18,6 +18,22 @@ A single-container cloud development environment with web terminal and SSH, ever
 Set `NO_CLAUDE=1` to skip the auto-launch: `NO_CLAUDE=1 ssh abc@<server> -p 2222`
 :::
 
+## Why Claude World?
+
+Claude World is designed around two core ideas: providing an isolated sandbox for agentic coding and enabling a remote, developer-first environment.
+
+### A Sandbox for Agentic Coding
+Agentic tools like Claude Code can run terminal commands, write scripts, and edit files automatically. Giving them direct access to your primary system carries risks. Claude World solves this by creating a dedicated, safe environment:
+- **Complete isolation**: Claude executes instructions inside a Docker container, keeping your host system completely untouched.
+- **Worry-free operation**: You can let Claude install dependencies, run scripts, and configure system tools without fearing accidental system modifications.
+- **Easy environment recovery**: If Claude misconfigures a tool or breaks a package, you can simply recreate the container to start fresh, while your actual project code remains untouched in the mounted workspace.
+
+### A Remote, Developer-First Environment
+Running heavy agent loops and compilation tasks locally drains laptop batteries and slows down machines. Claude World uses Docker Compose to run Claude Code on remote infrastructure:
+- **Develop from any device**: Use the browser-based web terminal or SSH to work from your PC, Mac, or even an iPad on the go.
+- **Offload resource usage**: Let a remote home server or cloud instance run the resource-intensive compilations, unit tests, and continuous agent runs.
+- **Continuous, persistent state**: Combined with tmux, your terminal session survives bad connections, app swaps, and device switches, allowing you to pick up exactly where you left off.
+
 ## Architecture
 
 One container, one shared environment:
