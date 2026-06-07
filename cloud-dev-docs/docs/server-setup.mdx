@@ -21,12 +21,12 @@ cd claude-world
 
 ```bash
 # Container init script
-curl -fsSL https://raw.githubusercontent.com/<user>/Claude-World/main/init.sh \
+curl -fsSL https://raw.githubusercontent.com/Piero24/Claude-World/main/init.sh \
   -o init.sh
 chmod +x init.sh
 
 # Plain Docker Compose file
-curl -fsSL https://raw.githubusercontent.com/<user>/Claude-World/main/compose.yaml \
+curl -fsSL https://raw.githubusercontent.com/Piero24/Claude-World/main/compose.yaml \
   -o compose.yaml
 ```
 
@@ -70,7 +70,7 @@ If both work, the container is running correctly.
 The installer asks where to store data, downloads everything, and prints next steps:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/<user>/Claude-World/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Piero24/Claude-World/main/install.sh | bash
 ```
 
 It creates `config/` and `workplace/` under your chosen path (default: `/DATA/AppData/claude-world`).

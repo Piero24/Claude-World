@@ -62,11 +62,12 @@ docker compose up -d
 | Method | URL / Command | Auth |
 |--------|---------------|------|
 | Web terminal | `http://<server-ip>:7681` | `PASSWORD` |
-| SSH | `ssh abc@<server-ip> -p 2222` | `SUDO_PASSWORD` |
+| SSH | `ssh abc@<server-ip> -p 2222` | `SUDO_PASSWORD` → Claude auto-launches |
 
 ## Key features
 
 - **One container for dev** — web terminal + SSH. No desktop, no separate VS Code
+- **Claude auto-launch** — SSH in and Claude is ready in `/workplace`. No typing, immediately productive
 - **Monitoring** — Beszel agent feeds system metrics to your existing hub
 - **Web terminal (ttyd)** — full bash shell in your browser, password-protected
 - **SSH access** — connect from Mac, PC, or phone (iPhone/Termius with persistent tmux)

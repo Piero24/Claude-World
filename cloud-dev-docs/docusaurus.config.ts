@@ -11,10 +11,10 @@ const config: Config = {
     v4: true,
   },
 
-  url: 'https://<user>.github.io',
+  url: 'https://Piero24.github.io',
   baseUrl: '/Claude-World/',
 
-  organizationName: '<user>',
+  organizationName: 'Piero24',
   projectName: 'Claude-World',
 
   onBrokenLinks: 'throw',
@@ -39,7 +39,7 @@ const config: Config = {
           sidebarPath: './sidebars.ts',
           routeBasePath: 'docs',
           editUrl:
-            'https://github.com/<user>/Claude-World/edit/main/cloud-dev-docs/',
+            'https://github.com/Piero24/Claude-World/edit/main/cloud-dev-docs/',
         },
         blog: false,
         theme: {
@@ -78,7 +78,7 @@ const config: Config = {
           position: 'left',
         },
         {
-          href: 'https://github.com/<user>/Claude-World',
+          href: 'https://github.com/Piero24/Claude-World',
           label: 'GitHub',
           position: 'right',
         },
@@ -108,7 +108,7 @@ const config: Config = {
         {
           title: 'More',
           items: [
-            {label: 'GitHub', href: 'https://github.com/<user>/Claude-World'},
+            {label: 'GitHub', href: 'https://github.com/Piero24/Claude-World'},
           ],
         },
       ],

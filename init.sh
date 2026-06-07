@@ -173,9 +173,10 @@ fi
 add_line 'cd /workplace' /config/.bashrc
 add_line 'cd /workplace' /config/.zshrc
 
-# ---- Auto-launch Claude on direct SSH login (not inside tmux, not ttyd) ----
-add_line 'if [ -z "$TMUX" ] && [ -n "$SSH_TTY" ]; then exec claude; fi' /config/.bashrc
-add_line 'if [ -z "$TMUX" ] && [ -n "$SSH_TTY" ]; then exec claude; fi' /config/.zshrc
+# ---- Auto-launch Claude on every login ----
+# Set NO_CLAUDE=1 to skip (e.g. NO_CLAUDE=1 ssh ...)
+add_line 'if [ -z "$NO_CLAUDE" ]; then exec claude; fi' /config/.bashrc
+add_line 'if [ -z "$NO_CLAUDE" ]; then exec claude; fi' /config/.zshrc
 
 # ---- tmux: auto-attach only when client sets TMUX_AUTO=1 (e.g. iPhone/Termius) ----
 # TMUX_TIMEOUT: hours before killing a detached session (-1=never, 0=on detach, N=after N hours)
