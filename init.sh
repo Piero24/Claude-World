@@ -21,23 +21,31 @@ add_line() {
     echo "$line" >> "$file"
 }
 
-# ---- System packages (reinstalled every boot — fast) ----
-echo "[claude-world] Installing system packages..."
-apt-get update -qq
-apt-get install -y -qq \
-    openssh-server \
-    build-essential \
-    python3-pip \
-    python3-venv \
-    python3-dev \
-    default-jdk \
-    git \
-    curl \
-    wget \
-    docker.io \
-    tmux \
-    zsh \
+# ---- System packages (skips if already installed — fast) ----
+REQUIRED_PACKAGES=(
+    openssh-server
+    build-essential
+    python3-pip
+    python3-venv
+    python3-dev
+    default-jdk
+    git
+    curl
+    wget
+    docker.io
+    tmux
+    zsh
     nano
+)
+
+echo "[claude-world] Checking system packages..."
+if dpkg -s "${REQUIRED_PACKAGES[@]}" >/dev/null 2>&1; then
+    echo "[claude-world] All system packages are already installed, skipping apt-get."
+else
+    echo "[claude-world] Some packages are missing. Installing system packages (this may take a few minutes)..."
+    apt-get update -qq
+    apt-get install -y -qq "${REQUIRED_PACKAGES[@]}"
+fi
 
 # ---- ttyd (web terminal) ----
 if [ ! -f /usr/local/bin/ttyd ]; then
@@ -64,11 +72,11 @@ fi
 if ! pgrep -f "ttyd.*7681" >/dev/null 2>&1; then
     echo "[claude-world] Starting ttyd on port 7681..."
     if [ -n "$PASSWORD" ] && [ "$PASSWORD" != "CHANGE_ME_WEB_PASSWORD" ]; then
-        su - "$USER" -c "nohup ttyd -p 7681 -c \"${USER}:${PASSWORD}\" bash -l > /dev/null 2>&1 &"
+        su - "$USER" -c "nohup /usr/local/bin/ttyd -p 7681 -c \"${USER}:${PASSWORD}\" bash -l > /config/ttyd.log 2>&1 &"
         echo "[claude-world] ttyd running on http://0.0.0.0:7681"
     else
         echo "[claude-world] WARNING: PASSWORD is empty or still the placeholder — ttyd started WITHOUT auth!"
-        su - "$USER" -c "nohup ttyd -p 7681 bash -l > /dev/null 2>&1 &"
+        su - "$USER" -c "nohup /usr/local/bin/ttyd -p 7681 bash -l > /config/ttyd.log 2>&1 &"
     fi
 else
     echo "[claude-world] ttyd already running, skipping."
