@@ -6,7 +6,7 @@ sidebar_position: 6
 
 ## What survives container rebuilds
 
-Everything in `/config` is a Docker volume — it lives on the host and survives `docker compose down && docker compose up -d`:
+Everything in `/config` is a Docker volume: it lives on the host and survives `docker compose down && docker compose up -d`:
 
 ```
 /config/
@@ -34,7 +34,7 @@ System packages installed via `apt-get` are lost on container rebuild. The init 
 | tmux, zsh, nano | Shell + editor |
 | ttyd | Web terminal binary |
 
-Reinstall takes a few seconds — apt-get is fast.
+Reinstall takes a few seconds, apt-get is fast.
 
 ## The golden rule
 
@@ -43,11 +43,11 @@ Reinstall takes a few seconds — apt-get is fast.
 ### Examples
 
 ```bash
-# ✅ Persists — lives in /config
+# ✅ Persists: lives in /config
 npm install -g some-package
 pip install --user some-package
 
-# ❌ Does NOT persist — add to init.sh
+# ❌ Does NOT persist: add to init.sh
 sudo apt-get install some-package
 ```
 

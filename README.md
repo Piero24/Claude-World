@@ -1,6 +1,6 @@
 # Claude World
 
-One container, one terminal. A Docker Compose stack that gives you a complete, persistent cloud development workspace — web-based terminal and SSH, with all your tools pre-installed.
+One container, one terminal. A Docker Compose stack that gives you a complete, persistent cloud development workspace with web-based terminal and SSH, all your tools pre-installed.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Piero24/Claude-World/main/install.sh | bash
@@ -32,7 +32,7 @@ flowchart LR
     Dev --> Workplace
 ```
 
-One container, everything in one place. `/config` is your persistent home — shell config, git identity, nvm, Node, Claude Code, all survive container rebuilds. `/workplace` is your code.
+One container, everything in one place. `/config` is your persistent home: shell config, git identity, nvm, Node, Claude Code, all survive container rebuilds. `/workplace` is your code.
 
 ## Quickstart
 
@@ -62,19 +62,19 @@ docker compose up -d
 | Method | URL / Command | Auth |
 |--------|---------------|------|
 | Web terminal | `http://<server-ip>:7681` | `PASSWORD` |
-| SSH | `ssh abc@<server-ip> -p 2222` | `SUDO_PASSWORD` → Claude auto-launches |
+| SSH | `ssh abc@<server-ip> -p 2222` | `SUDO_PASSWORD`, Claude auto-launches |
 
 ## Key features
 
-- **One container for dev** — web terminal + SSH. No desktop, no separate VS Code
-- **Claude auto-launch** — SSH in and Claude is ready in `/workplace`. No typing, immediately productive
-- **Monitoring** — Beszel agent feeds system metrics to your existing hub
-- **Web terminal (ttyd)** — full bash shell in your browser, password-protected
-- **SSH access** — connect from Mac, PC, or phone (iPhone/Termius with persistent tmux)
-- **Persistent sessions** — tmux auto-attach from iPhone/Termius via `TMUX_AUTO=1`; sessions survive disconnects
-- **Configurable cleanup** — `TMUX_TIMEOUT` auto-kills detached sessions after N hours; `tmux-keep` overrides it
-- **Persistent packages** — everything in `/config` survives container rebuilds
-- **No Mac required** — work entirely from a browser and SSH
+- **One container for dev**: web terminal + SSH. No desktop, no separate VS Code
+- **Claude auto-launch**: SSH in and Claude is ready in `/workplace`. No typing, immediately productive
+- **Monitoring**: Beszel agent feeds system metrics to your existing hub
+- **Web terminal (ttyd)**: full bash shell in your browser, password-protected
+- **SSH access**: connect from Mac, PC, or phone (iPhone/Termius with persistent tmux)
+- **Persistent sessions**: tmux auto-attach from iPhone/Termius via `TMUX_AUTO=1`, sessions survive disconnects
+- **Configurable cleanup**: `TMUX_TIMEOUT` auto-kills detached sessions after N hours, `tmux-keep` overrides it
+- **Persistent packages**: everything in `/config` survives container rebuilds
+- **No Mac required**: work entirely from a browser and SSH
 
 ## Tools pre-installed
 
@@ -98,7 +98,7 @@ If it lands in `/config`, it persists forever. If it needs `sudo` or `apt`, add 
 |------|---------|
 | [`compose.yaml`](compose.yaml) | Plain Docker Compose (short syntax, relative paths) |
 | [`compose-casaos.yaml`](compose-casaos.yaml) | CasaOS Compose (long syntax, `x-casaos` metadata) |
-| [`init.sh`](init.sh) | Container boot script — SSH, ttyd, nvm, Node, Claude Code |
+| [`init.sh`](init.sh) | Container boot script: SSH, ttyd, nvm, Node, Claude Code |
 | [`install.sh`](install.sh) | Interactive CasaOS installer |
 
 ## Docs
@@ -106,10 +106,10 @@ If it lands in `/config`, it persists forever. If it needs `sudo` or `apt`, add 
 Full documentation at [`cloud-dev-docs/`](cloud-dev-docs/):
 
 - [Overview & Architecture](cloud-dev-docs/docs/index.mdx)
-- [Server Setup](cloud-dev-docs/docs/server-setup.mdx) — Docker or CasaOS
-- [Daily Workflow](cloud-dev-docs/docs/daily-workflow.mdx) — tmux, persistent sessions, Termius
+- [Server Setup](cloud-dev-docs/docs/server-setup.mdx): Docker or CasaOS
+- [Daily Workflow](cloud-dev-docs/docs/daily-workflow.mdx): tmux, persistent sessions, Termius
 - [Persistence](cloud-dev-docs/docs/persistence.mdx)
-- [Environment Variables](cloud-dev-docs/docs/env-vars.mdx) — full reference
+- [Environment Variables](cloud-dev-docs/docs/env-vars.mdx): full reference
 
 ## Requirements
 
@@ -118,4 +118,4 @@ Full documentation at [`cloud-dev-docs/`](cloud-dev-docs/):
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT: see [LICENSE](LICENSE).

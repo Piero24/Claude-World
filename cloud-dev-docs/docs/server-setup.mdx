@@ -37,12 +37,12 @@ nano compose.yaml
 ```
 
 Replace under the **dev** service:
-- `CHANGE_ME_WEB_PASSWORD` — login password for the ttyd web terminal
-- `CHANGE_ME_SUDO_PASSWORD` — sudo password, also used for SSH login
-- `CHANGE_ME_ANTHROPIC_KEY` — your [Anthropic API key](https://console.anthropic.com)
-- `CHANGE_ME_GIT_NAME` / `CHANGE_ME_GIT_EMAIL` — your Git identity
-- `CHANGE_ME_GITHUB_TOKEN` — GitHub [fine-grained PAT](https://github.com/settings/tokens?type=beta)
-- `TZ` — your timezone
+- `CHANGE_ME_WEB_PASSWORD`: login password for the ttyd web terminal
+- `CHANGE_ME_SUDO_PASSWORD`: sudo password, also used for SSH login
+- `CHANGE_ME_ANTHROPIC_KEY`: your [Anthropic API key](https://console.anthropic.com)
+- `CHANGE_ME_GIT_NAME` / `CHANGE_ME_GIT_EMAIL`: your Git identity
+- `CHANGE_ME_GITHUB_TOKEN`: GitHub [fine-grained PAT](https://github.com/settings/tokens?type=beta)
+- `TZ`: your timezone
 
 ## Step 4: Start the container
 
@@ -57,8 +57,8 @@ You should see one container: `claude-world`.
 
 | Test | URL / Command |
 |------|---------------|
-| Web terminal | `http://<server-ip>:7681` — ttyd login (user: `abc`, pass: `PASSWORD`) |
-| SSH | `ssh abc@<server-ip> -p 2222` — login with `SUDO_PASSWORD` |
+| Web terminal | `http://<server-ip>:7681`, ttyd login (user: `abc`, pass: `PASSWORD`) |
+| SSH | `ssh abc@<server-ip> -p 2222`, login with `SUDO_PASSWORD` |
 
 If both work, the container is running correctly.
 
@@ -82,12 +82,12 @@ nano /DATA/AppData/claude-world/compose-casaos.yaml
 ```
 
 Replace under the **dev** service:
-- `CHANGE_ME_WEB_PASSWORD` — login password for the ttyd web terminal
-- `CHANGE_ME_SUDO_PASSWORD` — sudo password, also used for SSH login
-- `CHANGE_ME_ANTHROPIC_KEY` — your [Anthropic API key](https://console.anthropic.com)
-- `CHANGE_ME_GIT_NAME` / `CHANGE_ME_GIT_EMAIL` — your Git identity
-- `CHANGE_ME_GITHUB_TOKEN` — GitHub [fine-grained PAT](https://github.com/settings/tokens?type=beta)
-- `TZ` — your timezone
+- `CHANGE_ME_WEB_PASSWORD`: login password for the ttyd web terminal
+- `CHANGE_ME_SUDO_PASSWORD`: sudo password, also used for SSH login
+- `CHANGE_ME_ANTHROPIC_KEY`: your [Anthropic API key](https://console.anthropic.com)
+- `CHANGE_ME_GIT_NAME` / `CHANGE_ME_GIT_EMAIL`: your Git identity
+- `CHANGE_ME_GITHUB_TOKEN`: GitHub [fine-grained PAT](https://github.com/settings/tokens?type=beta)
+- `TZ`: your timezone
 
 ## Step 3: Import into CasaOS
 
@@ -105,8 +105,8 @@ You should see one container: `claude-world`.
 
 | Test | URL / Command |
 |------|---------------|
-| Web terminal | `http://<casaos-ip>:7681` — ttyd login (user: `abc`, pass: `PASSWORD`) |
-| SSH | `ssh abc@<casaos-ip> -p 2222` — login with `SUDO_PASSWORD` |
+| Web terminal | `http://<casaos-ip>:7681`, ttyd login (user: `abc`, pass: `PASSWORD`) |
+| SSH | `ssh abc@<casaos-ip> -p 2222`, login with `SUDO_PASSWORD` |
 
 If both work, the container is running correctly.
 

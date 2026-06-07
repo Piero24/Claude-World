@@ -1,7 +1,7 @@
 name: claude-world
 services:
   # ================================================================
-  # CLAUDE WORLD — Single-container cloud dev terminal
+  # CLAUDE WORLD:Single-container cloud dev terminal
   # ================================================================
   dev:
     image: lscr.io/linuxserver/webtop:ubuntu-xfce
@@ -72,7 +72,7 @@ services:
         target: /var/run/docker.sock
 
   # ================================================================
-  # BESZEL AGENT — Sends system metrics to your Beszel hub
+  # BESZEL AGENT:Sends system metrics to your Beszel hub
   # ================================================================
   beszel-agent:
     image: henrygd/beszel-agent:latest
@@ -114,11 +114,11 @@ x-casaos:
   category: Development
   description:
     en_us: >
-      Claude World — A single-container cloud development environment
+      Claude World:A single-container cloud development environment
       with a web-based terminal (ttyd) and SSH access.
       Includes nvm, Node LTS, Claude Code, Python, Java, and build tools pre-installed.
   tagline:
     en_us: >
       Web terminal + SSH in one container.
-      nvm, Node, Claude Code, Python — all pre-installed.
+      nvm, Node, Claude Code, Python:all pre-installed.
   port_map: "7681"

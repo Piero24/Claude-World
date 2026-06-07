@@ -4,13 +4,13 @@ sidebar_position: 1
 
 # Claude World
 
-A single-container cloud development environment — web terminal + SSH, everything in one place.
+A single-container cloud development environment with web terminal and SSH, everything in one place.
 
 ## What You Get
 
-- **Web terminal in your browser** — full bash shell via ttyd, password-protected, from any device
-- **SSH access** — connect from Mac, PC, or phone (iPhone/Termius with persistent tmux)
-- **Everything in one container** — no desktop, no separate VS Code, no extra services
+- **Web terminal in your browser**: full bash shell via ttyd, password-protected, from any device
+- **SSH access**: connect from Mac, PC, or phone (iPhone/Termius with persistent tmux)
+- **Everything in one container**: no desktop, no separate VS Code, no extra services
 
 ## Architecture
 
@@ -49,7 +49,7 @@ compose.yaml          init.sh              /config (persistent home)
                                            └── .npm-global (Claude Code)
 ```
 
-Edit `compose.yaml` → recreate the container → changes take effect on next boot.
+Edit `compose.yaml`, recreate the container, changes take effect on next boot.
 
 ## Tools pre-installed
 
@@ -70,7 +70,7 @@ If it lands in `/config`, it persists forever. If it needs `sudo` or `apt`, add 
 
 ## Next steps
 
-- **[Server Setup](./server-setup)** — get the container running (Docker or CasaOS)
-- **[Daily Workflow](./daily-workflow)** — tmux, persistent sessions, Termius
-- **[Persistence](./persistence)** — what survives rebuilds and what doesn't
-- **[Environment Variables](./env-vars)** — full reference for all configurable vars
+- **[Server Setup](./server-setup)**: get the container running (Docker or CasaOS)
+- **[Daily Workflow](./daily-workflow)**: tmux, persistent sessions, Termius
+- **[Persistence](./persistence)**: what survives rebuilds and what doesn't
+- **[Environment Variables](./env-vars)**: full reference for all configurable vars

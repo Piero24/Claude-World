@@ -13,7 +13,7 @@ ssh abc@<your-server> -p 2222
 # → You're in /workplace and Claude is ready.
 ```
 
-No need to type `claude` manually — it launches automatically on SSH login. Exit Claude (`/exit` or `Ctrl+D`) and the SSH session ends.
+No need to type `claude` manually: it launches automatically on SSH login. Exit Claude (`/exit` or `Ctrl+D`) and the SSH session ends.
 
 Or open `http://<your-server>:7681` in a browser for the web terminal (plain shell, Claude does not auto-launch).
 
@@ -30,22 +30,22 @@ The server auto-detects where you're connecting from and starts tmux only when n
 
 With `TMUX_TIMEOUT=2`: if you disconnect and don't reconnect within 2 hours, the tmux session auto-cleans. No zombie sessions.
 
-**From Mac/PC:** Claude launches immediately — ask your question, get an answer, exit, done.
+**From Mac/PC:** Claude launches immediately, ask your question, get an answer, exit, done.
 
 ```bash
 ssh abc@<server> -p 2222    # → Claude auto-launches in /workplace
 ```
 
-**From iPhone/Termius:** auto-attaches to a persistent tmux session — switch apps, lose signal, everything keeps running. Type `claude` inside tmux to start.
+**From iPhone/Termius:** auto-attaches to a persistent tmux session, switch apps, lose signal, everything keeps running. Type `claude` inside tmux to start.
 
 ```bash
 ssh abc@<server> -p 2222    # → auto-attached to tmux "main" (Termius sent TMUX_AUTO=1)
-claude                       # start Claude inside tmux — survives disconnects
+claude                       # start Claude inside tmux, survives disconnects
 ```
 
 Next time you connect from Termius, you're back in the same session.
 
-**How it works:** SSH login → `.bashrc` detects `$SSH_TTY` → `cd /workplace` then `exec claude`. Termius sends `TMUX_AUTO=1` via SSH which triggers tmux auto-attach instead — Claude doesn't auto-launch inside tmux (you start it manually to avoid recursion).
+**How it works:** SSH login → `.bashrc` detects `$SSH_TTY` → `cd /workplace` then `exec claude`. Termius sends `TMUX_AUTO=1` via SSH which triggers tmux auto-attach instead. Claude doesn't auto-launch inside tmux (you start it manually to avoid recursion).
 
 **Key commands inside tmux:**
 
@@ -59,11 +59,11 @@ Next time you connect from Termius, you're back in the same session.
 | Kill current session | `tmux kill-session` |
 | Kill all sessions | `tmux kill-server` |
 | Kill all except current | `tmux kill-session -a` |
-| **Keep session forever** | `tmux-keep` — prevents auto-cleanup for this session |
+| **Keep session forever** | `tmux-keep`, prevents auto-cleanup for this session |
 
 :::tip Override the timeout
 
-Mid-task and realize you need more time? Run `tmux-keep` inside the tmux session. The cleanup daemon will skip it — it stays alive until you manually kill it, regardless of `TMUX_TIMEOUT`.
+Mid-task and realize you need more time? Run `tmux-keep` inside the tmux session. The cleanup daemon will skip it, it stays alive until you manually kill it, regardless of `TMUX_TIMEOUT`.
 
 :::
 
@@ -72,8 +72,8 @@ Mid-task and realize you need more time? Run `tmux-keep` inside the tmux session
 You don't need a local machine. Everything runs on the server:
 
 - **Terminal**: web terminal at `http://<server>:7681` or SSH from anywhere
-- **Claude Code / long tasks**: inside tmux — survives disconnects
-- **Files**: live at `/workplace/` — visible from terminal and SSH
+- **Claude Code / long tasks**: inside tmux, survives disconnects
+- **Files**: live at `/workplace/`, visible from terminal and SSH
 
 ## Accessing from elsewhere
 
@@ -89,7 +89,7 @@ To end an SSH session, type `exit` or press `Ctrl+D`. To leave tmux running, det
 
 :::note
 
-If the server reboots, your SSH session ends — just connect again.
+If the server reboots, your SSH session ends, just connect again.
 
 tmux sessions survive disconnects but not server reboots. Reattach with `tmux attach -t main` after reboot.
 

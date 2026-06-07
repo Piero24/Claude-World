@@ -1,7 +1,7 @@
 name: claude-world
 services:
   # ================================================================
-  # CLAUDE WORLD — Single-container cloud dev terminal
+  # CLAUDE WORLD:Single-container cloud dev terminal
   # ================================================================
   dev:
     image: lscr.io/linuxserver/webtop:ubuntu-xfce
@@ -37,7 +37,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
 
   # ================================================================
-  # BESZEL AGENT — Sends system metrics to your Beszel hub
+  # BESZEL AGENT:Sends system metrics to your Beszel hub
   # ================================================================
   beszel-agent:
     image: henrygd/beszel-agent:latest

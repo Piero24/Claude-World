@@ -6,7 +6,7 @@ sidebar_position: 8
 
 All configurable environment variables live in `compose.yaml` under the **dev** service. The init script writes them into `/config` on every boot, so they take effect immediately.
 
-`ANTHROPIC_AUTH_TOKEN` is the only value you must provide — without it, Claude Code won't start. Every other variable falls back to the default shown in its table.
+`ANTHROPIC_AUTH_TOKEN` is the only value you must provide: without it, Claude Code won't start. Every other variable falls back to the default shown in its table.
 
 ## How it works
 
@@ -54,7 +54,7 @@ ANTHROPIC_MODEL: anthropic/claude-opus-4-8
 
 ### How to apply changes
 
-Edit `compose.yaml` → recreate the container:
+Edit `compose.yaml`, recreate the container:
 
 ```bash
 docker compose up -d --force-recreate
@@ -73,17 +73,17 @@ source ~/.zshrc
 |---------|---------------|
 | `GIT_USER_NAME` | Your name for commits (`git config user.name`) |
 | `GIT_USER_EMAIL` | Your email for commits (`git config user.email`) |
-| `GITHUB_TOKEN` | GitHub [fine-grained PAT](https://github.com/settings/tokens?type=beta) — used for all `git clone` / `push` / `pull` |
+| `GITHUB_TOKEN` | GitHub [fine-grained PAT](https://github.com/settings/tokens?type=beta), used for all `git clone` / `push` / `pull` |
 
 ### Creating a GitHub token
 
 Go to [github.com/settings/tokens?type=beta](https://github.com/settings/tokens?type=beta):
 
-1. **Repository access**: "Only select repositories" — pick which ones
+1. **Repository access**: "Only select repositories", pick which ones
 2. **Permissions**: Contents (read/write as needed), Metadata (read, auto-selected)
 3. Copy the `github_pat_...` token into `GITHUB_TOKEN`
 
-The token can be revoked or scoped anytime. No account password stored — if the container is compromised, you only lose access to the repos you explicitly granted.
+The token can be revoked or scoped anytime. No account password stored: if the container is compromised, you only lose access to the repos you explicitly granted.
 
 After setting these and recreating the container, `git clone`, `git push`, and `git pull` all use the token automatically.
 
