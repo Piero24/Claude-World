@@ -31,6 +31,10 @@ fi
 echo "[claude-world] Configuring shell for '$USER' to /bin/bash..."
 usermod -s /bin/bash "$USER"
 
+# Explicitly set the home directory in /etc/passwd to /config
+echo "[claude-world] Configuring home directory for '$USER' to /config..."
+usermod -d /config "$USER"
+
 echo "[claude-world] Running as user: '$USER'"
 
 # ---- Helper: add line to file if not already present ----
@@ -93,11 +97,11 @@ fi
 if ! pgrep -f "ttyd.*7681" >/dev/null 2>&1; then
     echo "[claude-world] Starting ttyd on port 7681..."
     if [ -n "$PASSWORD" ] && [ "$PASSWORD" != "CHANGE_ME_WEB_PASSWORD" ]; then
-        su - "$USER" -c "export HOME=/config && nohup /usr/local/bin/ttyd -p 7681 -w /workplace -c \"${USER}:${PASSWORD}\" bash -l > /config/ttyd.log 2>&1 &"
+        su - "$USER" -c "export HOME=/config && nohup /usr/local/bin/ttyd -p 7681 -W -w /workplace -c \"${USER}:${PASSWORD}\" bash -l > /config/ttyd.log 2>&1 &"
         echo "[claude-world] ttyd running on http://0.0.0.0:7681"
     else
         echo "[claude-world] WARNING: PASSWORD is empty or still the placeholder — ttyd started WITHOUT auth!"
-        su - "$USER" -c "export HOME=/config && nohup /usr/local/bin/ttyd -p 7681 -w /workplace bash -l > /config/ttyd.log 2>&1 &"
+        su - "$USER" -c "export HOME=/config && nohup /usr/local/bin/ttyd -p 7681 -W -w /workplace bash -l > /config/ttyd.log 2>&1 &"
     fi
 else
     echo "[claude-world] ttyd already running, skipping."
