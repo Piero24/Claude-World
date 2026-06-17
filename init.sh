@@ -242,6 +242,9 @@ add_line 'alias ta="tmux new -A -s main"' /config/.zshrc
 add_line 'alias tmux-keep="tmux setenv TMUX_KEEP 1 && echo \"Session marked keep — will never be auto-cleaned\""' /config/.bashrc
 add_line 'alias tmux-keep="tmux setenv TMUX_KEEP 1 && echo \"Session marked keep — will never be auto-cleaned\""' /config/.zshrc
 
+# ---- tmux config (persists in /config/.tmux.conf) ----
+add_line 'set -g mouse on' /config/.tmux.conf
+
 # ---- tmux cleanup daemon: kills detached sessions after TMUX_TIMEOUT hours ----
 cat > /usr/local/bin/tmux-cleanup.sh << 'TMUXCLEANUP'
 #!/bin/bash

@@ -52,7 +52,7 @@ Next time you connect from Termius, you reattach to the same session with Claude
 | Action | Command |
 |--------|---------|
 | Detach (leave running) | `Ctrl+B` then `D` |
-| Scroll up | `Ctrl+B` then `[` (arrows, `q` to quit) |
+| Scroll up | Mouse scroll or `Ctrl+B` then `[` (arrows, `q` to quit) |
 | New session | `tmux new -A -s name` |
 | List sessions | `tmux ls` |
 | Manual attach anytime | `ta` (alias for `tmux new -A -s main`) |
@@ -60,6 +60,16 @@ Next time you connect from Termius, you reattach to the same session with Claude
 | Kill all sessions | `tmux kill-server` |
 | Kill all except current | `tmux kill-session -a` |
 | **Keep session forever** | `tmux-keep`, prevents auto-cleanup for this session |
+
+:::tip Mouse scrolling
+
+Mouse scrolling works out of the box as the container sets `set -g mouse on` in `/config/.tmux.conf` automatically.
+
+Without this setting, scrolling in tmux cycles through shell history instead of scrolling output, which is a [common tmux gotcha](https://www.reddit.com/r/ClaudeCode/comments/1rdwpdb/terminus_not_scrolling/) and **not a Claude Code or Termius bug**. If you're using tmux outside Claude World, add `set -g mouse on` to your `~/.tmux.conf` and restart tmux.
+
+To select text while mouse mode is on, hold **Option** (macOS) or **Shift** (Linux) while clicking and dragging. This bypasses tmux mouse capture and uses your terminal's native selection.
+
+:::
 
 :::tip Override the timeout
 
