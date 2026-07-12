@@ -72,6 +72,43 @@ else
     apt-get install -y -qq "${REQUIRED_PACKAGES[@]}"
 fi
 
+# ---- Docker socket: match host GID so the user can use the socket ----
+if [ -S /var/run/docker.sock ]; then
+    HOST_DOCKER_GID=$(stat -c '%g' /var/run/docker.sock 2>/dev/null || echo "")
+    if [ -n "$HOST_DOCKER_GID" ] && [ "$HOST_DOCKER_GID" != "0" ]; then
+        echo "[claude-world] Docker socket on host has GID=$HOST_DOCKER_GID — syncing container docker group..."
+        if getent group docker >/dev/null 2>&1; then
+            groupmod -g "$HOST_DOCKER_GID" docker 2>/dev/null || \
+                echo "[claude-world] WARNING: Failed to update docker GID (already migrated?)"
+        else
+            groupadd -g "$HOST_DOCKER_GID" docker 2>/dev/null || \
+                echo "[claude-world] WARNING: Failed to create docker group"
+        fi
+        usermod -aG docker "$USER" && \
+            echo "[claude-world] User '$USER' added to docker group (GID=$HOST_DOCKER_GID)"
+    else
+        echo "[claude-world] Docker socket has no group or is root-owned — adding user to docker group anyway..."
+        usermod -aG docker "$USER" 2>/dev/null || true
+    fi
+else
+    echo "[claude-world] No docker socket found at /var/run/docker.sock — skipping docker group setup"
+fi
+
+# ---- GitHub CLI (gh) ----
+if ! command -v gh >/dev/null 2>&1; then
+    echo "[claude-world] Installing GitHub CLI..."
+    mkdir -p -m 755 /etc/apt/keyrings
+    wget -qO- https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+        | tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+        | tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+    apt-get update -qq
+    apt-get install -y -qq gh
+    echo "[claude-world] GitHub CLI installed ($(gh --version | head -1))"
+else
+    echo "[claude-world] GitHub CLI already installed, skipping."
+fi
+
 # ---- ttyd (web terminal) ----
 if [ ! -f /usr/local/bin/ttyd ]; then
     echo "[claude-world] Installing ttyd..."
@@ -188,6 +225,8 @@ export CLAUDE_CODE_SUBAGENT_MODEL=${CLAUDE_CODE_SUBAGENT_MODEL:-claude-haiku-4-5
 export CLAUDE_CODE_EFFORT_LEVEL=${CLAUDE_CODE_EFFORT_LEVEL:-max}
 export TMUX_AUTO=${TMUX_AUTO:-0}
 export TMUX_TIMEOUT=${TMUX_TIMEOUT:--1}
+export GITHUB_TOKEN=${GITHUB_TOKEN:-}
+export GH_TOKEN=${GH_TOKEN:-${GITHUB_TOKEN}}
 # <<< Claude Code
 CLAUDECODE
 done
@@ -200,8 +239,8 @@ if [ -n "${GIT_USER_NAME}" ] && [ "${GIT_USER_NAME}" != "CHANGE_ME_GIT_NAME" ]; 
 fi
 
 if [ -n "${GITHUB_TOKEN}" ] && [ "${GITHUB_TOKEN}" != "CHANGE_ME_GITHUB_TOKEN" ]; then
-    su - "$USER" -c "export HOME=/config && git config --global url.'https://oauth2:${GITHUB_TOKEN}@github.com/'.insteadOf 'https://github.com/'"
-    echo "[claude-world] GitHub token configured (fine-grained PAT)"
+    su - "$USER" -c "export HOME=/config && export GITHUB_TOKEN='${GITHUB_TOKEN}' && gh auth setup-git --hostname github.com"
+    echo "[claude-world] Git credential helper configured via gh (uses GITHUB_TOKEN)"
 fi
 
 # ---- Auto-launch: cd + tmux + claude ----

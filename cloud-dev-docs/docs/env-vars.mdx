@@ -73,7 +73,7 @@ source ~/.zshrc
 |---------|---------------|
 | `GIT_USER_NAME` | Your name for commits (`git config user.name`) |
 | `GIT_USER_EMAIL` | Your email for commits (`git config user.email`) |
-| `GITHUB_TOKEN` | GitHub [fine-grained PAT](https://github.com/settings/tokens?type=beta), used for all `git clone` / `push` / `pull` |
+| `GITHUB_TOKEN` | GitHub [fine-grained PAT](https://github.com/settings/tokens?type=beta), used by both `git` (via `gh` credential helper) and the `gh` CLI |
 
 ### Creating a GitHub token
 
@@ -85,7 +85,7 @@ Go to [github.com/settings/tokens?type=beta](https://github.com/settings/tokens?
 
 The token can be revoked or scoped anytime. No account password stored: if the container is compromised, you only lose access to the repos you explicitly granted.
 
-After setting these and recreating the container, `git clone`, `git push`, and `git pull` all use the token automatically.
+After setting these and recreating the container, both `git clone`/`push`/`pull` and `gh` CLI commands (`gh pr`, `gh issue`, etc.) use the token automatically.
 
 ## Container settings
 

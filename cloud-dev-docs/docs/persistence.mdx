@@ -14,7 +14,8 @@ Everything in `/config` is a Docker volume: it lives on the host and survives `d
 ├── .zshrc               # Zsh config
 ├── .bash_profile        # Login shell hook
 ├── .tmux.conf           # tmux config (mouse on, etc.)
-├── .gitconfig           # Git identity + GitHub token
+├── .gitconfig           # Git identity (+ gh credential helper)
+├── .config/gh/          # GitHub CLI config (if logged in)
 ├── .nvm/                # nvm + Node LTS installations
 ├── .npm-global/         # Global npm packages (Claude Code)
 └── .local/              # User-local data
@@ -32,6 +33,7 @@ System packages installed via `apt-get` are lost on container rebuild. The init 
 | default-jdk | Java |
 | git, curl, wget | Core utilities |
 | docker.io | Docker CLI |
+| gh | GitHub CLI |
 | tmux, zsh, nano | Shell + editor |
 | ttyd | Web terminal binary |
 

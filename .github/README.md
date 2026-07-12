@@ -28,7 +28,7 @@ curl -fsSL https://raw.githubusercontent.com/Piero24/Claude-World/main/install.s
 | **dev** | `linuxserver/baseimage-ubuntu:noble` | Web terminal (ttyd) + SSH + all dev tools |
 | **beszel-agent** | `henrygd/beszel-agent:latest` | System metrics → your existing Beszel hub |
 
-Pre-installed: nvm + Node LTS, Claude Code, Python 3, Java, Docker CLI, build-essential, tmux, zsh.
+Pre-installed: nvm + Node LTS, Claude Code, Python 3, Java, Docker CLI, GitHub CLI (gh), build-essential, tmux, zsh.
 
 ## Architecture
 
@@ -100,6 +100,7 @@ docker compose up -d
 | Python 3 + pip | Init script (apt) | ❌ Reinstalled each boot |
 | Java (default-jdk) | Init script (apt) | ❌ Reinstalled each boot |
 | Docker CLI | Init script (apt) | ❌ Reinstalled each boot |
+| GitHub CLI (gh) | Init script (apt) | ❌ Reinstalled each boot |
 | build-essential | Init script (apt) | ❌ Reinstalled each boot |
 | Git, curl, zsh, tmux, nano | Init script (apt) | ❌ Reinstalled each boot |
 
