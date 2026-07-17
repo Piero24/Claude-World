@@ -61,13 +61,19 @@ Next time you connect from Termius, you reattach to the same session with Claude
 | Kill all except current | `tmux kill-session -a` |
 | **Keep session forever** | `tmux-keep`, prevents auto-cleanup for this session |
 
-:::tip Mouse scrolling
+:::tip Copying text while mouse mode is on
 
-Mouse scrolling works out of the box as the container sets `set -g mouse on` in `/config/.tmux.conf` automatically.
+Mouse scrolling works out of the box — the container sets `set -g mouse on` in `/config/.tmux.conf` automatically.
 
-Without this setting, scrolling in tmux cycles through shell history instead of scrolling output, which is a [common tmux gotcha](https://www.reddit.com/r/ClaudeCode/comments/1rdwpdb/terminus_not_scrolling/) and **not a Claude Code or Termius bug**. If you're using tmux outside Claude World, add `set -g mouse on` to your `~/.tmux.conf` and restart tmux.
+But mouse mode also captures text selection. To copy text out of tmux:
 
-To select text while mouse mode is on, hold **Option** (macOS) or **Shift** (Linux) while clicking and dragging. This bypasses tmux mouse capture and uses your terminal's native selection.
+| Method | How |
+|--------|-----|
+| **Shift + select** (easiest) | Hold **Shift** while clicking and dragging — bypasses tmux, uses your terminal's native copy. Works in Terminal.app, Termius, ttyd, and most SSH clients |
+| **tmux copy mode** | `Ctrl+B` then `[` → move with arrows → `Space` to start selection → `Enter` to copy → `Ctrl+B` `]` to paste inside tmux |
+| **ttyd (browser)** | Hold Shift + select, or right-click → Copy. Toggle mouse-capture in the ttyd titlebar to disable tmux mouse entirely for that session |
+
+Without `set -g mouse on`, scrolling in tmux cycles through shell history instead of scrolling output, which is a [common tmux gotcha](https://www.reddit.com/r/ClaudeCode/comments/1rdwpdb/terminus_not_scrolling/) and **not a Claude Code or Termius bug**. If you're using tmux outside Claude World, add `set -g mouse on` to your `~/.tmux.conf` and restart tmux.
 
 :::
 
