@@ -72,26 +72,36 @@ else
     apt-get install -y -qq "${REQUIRED_PACKAGES[@]}"
 fi
 
-# ---- Docker socket: match host GID so the user can use the socket ----
-if [ -S /var/run/docker.sock ]; then
-    HOST_DOCKER_GID=$(stat -c '%g' /var/run/docker.sock 2>/dev/null || echo "")
-    if [ -n "$HOST_DOCKER_GID" ] && [ "$HOST_DOCKER_GID" != "0" ]; then
-        echo "[claude-world] Docker socket on host has GID=$HOST_DOCKER_GID — syncing container docker group..."
-        if getent group docker >/dev/null 2>&1; then
-            groupmod -g "$HOST_DOCKER_GID" docker 2>/dev/null || \
-                echo "[claude-world] WARNING: Failed to update docker GID (already migrated?)"
+# ---- Docker-in-Docker: run a docker daemon inside the container ----
+# The container gets its OWN isolated docker daemon — no host socket mount.
+# docker.io is already installed via REQUIRED_PACKAGES above.
+if command -v dockerd >/dev/null 2>&1; then
+    if ! pgrep -f "dockerd" >/dev/null 2>&1; then
+        echo "[claude-world] Starting Docker daemon inside container (DinD)..."
+        # Try fuse-overlayfs first (faster), fall back to vfs (works everywhere)
+        if apt-get install -y -qq fuse-overlayfs 2>/dev/null && [ -x /usr/bin/fuse-overlayfs ]; then
+            STORAGE_DRIVER="fuse-overlayfs"
         else
-            groupadd -g "$HOST_DOCKER_GID" docker 2>/dev/null || \
-                echo "[claude-world] WARNING: Failed to create docker group"
+            echo "[claude-world] fuse-overlayfs not available, using vfs (slower but reliable)"
+            STORAGE_DRIVER="vfs"
         fi
-        usermod -aG docker "$USER" && \
-            echo "[claude-world] User '$USER' added to docker group (GID=$HOST_DOCKER_GID)"
+        nohup dockerd --storage-driver="$STORAGE_DRIVER" > /var/log/dockerd.log 2>&1 &
+        # Wait up to 5 seconds for the socket to appear
+        for i in $(seq 1 10); do
+            if [ -S /var/run/docker.sock ]; then
+                echo "[claude-world] Docker daemon started (internal only, driver=$STORAGE_DRIVER, no host access)"
+                break
+            fi
+            sleep 0.5
+        done
     else
-        echo "[claude-world] Docker socket has no group or is root-owned — adding user to docker group anyway..."
-        usermod -aG docker "$USER" 2>/dev/null || true
+        echo "[claude-world] Docker daemon already running, skipping."
     fi
+    # Add user to docker group for the internal daemon
+    usermod -aG docker "$USER" 2>/dev/null && \
+        echo "[claude-world] User '$USER' added to docker group (internal daemon)"
 else
-    echo "[claude-world] No docker socket found at /var/run/docker.sock — skipping docker group setup"
+    echo "[claude-world] dockerd not found — skipping Docker setup"
 fi
 
 # ---- GitHub CLI (gh) ----

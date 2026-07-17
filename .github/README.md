@@ -99,7 +99,7 @@ docker compose up -d
 | Claude Code | Init script (npm global) | ✅ `/config/.npm-global` |
 | Python 3 + pip | Init script (apt) | ❌ Reinstalled each boot |
 | Java (default-jdk) | Init script (apt) | ❌ Reinstalled each boot |
-| Docker CLI | Init script (apt) | ❌ Reinstalled each boot |
+| Docker (DinD) | Init script (apt + internal daemon) | ❌ Reinstalled each boot |
 | GitHub CLI (gh) | Init script (apt) | ❌ Reinstalled each boot |
 | build-essential | Init script (apt) | ❌ Reinstalled each boot |
 | Git, curl, zsh, tmux, nano | Init script (apt) | ❌ Reinstalled each boot |
