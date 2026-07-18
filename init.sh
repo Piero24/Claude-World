@@ -338,7 +338,10 @@ if [ ! -f "$CLEANUP_SKILL" ]; then
     echo "[claude-world] Creating cleanup-merged skill..."
     mkdir -p /config/.claude/skills
     cat > "$CLEANUP_SKILL" << 'CLEANUP_SKILL_EOF'
-# cleanup-merged
+---
+name: cleanup-merged
+description: Delete merged branches and close resolved issues
+---
 
 Delete local and remote branches that have been merged into main, and close
 any GitHub issues that were resolved by those merged PRs.
