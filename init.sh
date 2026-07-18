@@ -241,6 +241,149 @@ export GH_TOKEN=${GH_TOKEN:-${GITHUB_TOKEN}}
 CLAUDECODE
 done
 
+# ---- Claude Code CLAUDE.md (global instructions injected into every prompt) ----
+# Written on first boot ONLY — edit /config/.claude/CLAUDE.md to customize.
+# To force regeneration, delete the file and restart the container.
+CLAUDE_MD="/config/.claude/CLAUDE.md"
+if [ ! -f "$CLAUDE_MD" ]; then
+    echo "[claude-world] Creating Claude Code CLAUDE.md with global instructions..."
+    mkdir -p /config/.claude
+    cat > "$CLAUDE_MD" << 'CLAUDE_MD_EOF'
+# CLAUDE.md — Global Instructions
+
+## Communication Style
+- Do not use "-" in normal paragraphs. It must be avoided.
+- Use ":" as a separator instead.
+  Example: "The fix is in utils.py: it handles the edge case"
+- Bullet points may start with "-" as normal.
+- Stay strict to facts. Do not make assumptions or speculate.
+- If you don't know something, search online rather than guessing.
+- If stuck or the task is unclear, ask for clarification before proceeding.
+- If unsure whether a command is safe to run, ask for permission.
+
+## Git Conventions
+- Follow standard git conventions.
+- Branch naming: `feat/<description>` for features, `fix/<description>` for fixes.
+- Commit messages: `feat: <description>` for features, `fix: <description>` for fixes.
+- When committing, do NOT add "Co-Authored-By: Claude" or any mention of Claude/AI.
+- When opening a PR or doing a code review, do NOT mention Claude Code or AI involvement.
+
+## Code Quality
+- Act as a senior Google engineer.
+- Follow language-specific best practices and style guides.
+- Code must be scalable: consider growth in data volume, traffic, and team size.
+- Code must be reusable: extract shared logic, avoid duplication, prefer composition.
+- No redundant code: keep it DRY, delete dead code, consolidate near-duplicates.
+- Code must be self-explanatory. Write clear, self-documenting names.
+- Comments must be concise. Comment only on complex functions/methods.
+- Add comments around code only for parameters or when something is difficult to understand.
+- Comments explain "why", not "what".
+
+## Environment
+- Always use a virtual environment for package installation (Python venv, Node nvm, etc.).
+- Never install packages globally at the OS level (`pip install`, `npm install -g`, etc.).
+CLAUDE_MD_EOF
+    chown "$USER:$USER" "$CLAUDE_MD"
+    echo "[claude-world] CLAUDE.md created (edit /config/.claude/CLAUDE.md to customize)"
+else
+    echo "[claude-world] CLAUDE.md already exists, skipping."
+fi
+
+# ---- Claude Code settings.json (permissions + autonomy) ----
+# Written on first boot ONLY — edit /config/.claude/settings.json to customize.
+# To force regeneration, delete the file and restart the container.
+CLAUDE_SETTINGS="/config/.claude/settings.json"
+if [ ! -f "$CLAUDE_SETTINGS" ]; then
+    echo "[claude-world] Creating Claude Code settings.json with pre-approved permissions..."
+    mkdir -p /config/.claude
+    cat > "$CLAUDE_SETTINGS" << 'CLAUDE_SETTINGS_EOF'
+{
+  "permissions": {
+    "allow": [
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Edit",
+      "Write",
+      "Read",
+      "NotebookEdit"
+    ],
+    "deny": [
+      "Bash(rm -rf /:*)",
+      "Bash(rm -rf /config:*)",
+      "Bash(rm -rf /etc:*)",
+      "Bash(sudo rm -rf /:*)",
+      "Bash(sudo rm -rf /config:*)",
+      "Bash(sudo rm -rf /etc:*)",
+      "Bash(:(){ :|:& };::*)",
+      "Bash(> /dev/sda:*)",
+      "Bash(dd if=* of=/dev/:*)",
+      "Bash(mkfs:*)",
+      "Bash(gh repo delete:*)"
+    ]
+  }
+}
+CLAUDE_SETTINGS_EOF
+    chown "$USER:$USER" "$CLAUDE_SETTINGS"
+    echo "[claude-world] Claude Code permissions pre-approved (edit /config/.claude/settings.json to customize)"
+else
+    echo "[claude-world] Claude Code settings.json already exists, skipping."
+fi
+
+# ---- cleanup-merged skill ----
+# Written on first boot ONLY — edit /config/.claude/skills/cleanup-merged.md to customize.
+# To force regeneration, delete the file and restart the container.
+CLEANUP_SKILL="/config/.claude/skills/cleanup-merged.md"
+if [ ! -f "$CLEANUP_SKILL" ]; then
+    echo "[claude-world] Creating cleanup-merged skill..."
+    mkdir -p /config/.claude/skills
+    cat > "$CLEANUP_SKILL" << 'CLEANUP_SKILL_EOF'
+# cleanup-merged
+
+Delete local and remote branches that have been merged into main, and close
+any GitHub issues that were resolved by those merged PRs.
+
+## Steps
+
+### 1. Fetch latest and prune
+```
+git fetch origin --prune
+```
+
+### 2. Delete merged local branches
+```
+git branch --merged main | grep -v "main\|master\|^*" | xargs -r git branch -d
+```
+
+### 3. Identify merged remote branches
+```
+gh pr list --state merged --json headRefName --jq '.[].headRefName' | sort -u
+```
+
+### 4. Delete merged remote branches
+```
+gh pr list --state merged --json headRefName --jq '.[].headRefName' | sort -u | xargs -r -I {} git push origin --delete {}
+```
+
+### 5. Close completed GitHub issues
+```
+gh pr list --state merged --json body,closingIssuesReferences --jq '.[].closingIssuesReferences[].number' | sort -u | while read issue; do
+  state=$(gh issue view "$issue" --json state --jq '.state')
+  if [ "$state" = "OPEN" ]; then
+    gh issue close "$issue" --comment "Completed via merged PR. Closing automatically."
+  fi
+done
+```
+
+### 6. Report summary
+Print how many local branches, remote branches, and issues were cleaned up.
+CLEANUP_SKILL_EOF
+    chown "$USER:$USER" "$CLEANUP_SKILL"
+    echo "[claude-world] cleanup-merged skill created (edit /config/.claude/skills/cleanup-merged.md to customize)"
+else
+    echo "[claude-world] cleanup-merged skill already exists, skipping."
+fi
+
 # ---- Git / GitHub config (from Compose env) ----
 if [ -n "${GIT_USER_NAME}" ] && [ "${GIT_USER_NAME}" != "CHANGE_ME_GIT_NAME" ]; then
     su - "$USER" -c "export HOME=/config && git config --global user.name '${GIT_USER_NAME}'"
