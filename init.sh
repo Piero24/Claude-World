@@ -439,6 +439,8 @@ add_line 'alias tmux-keep="tmux setenv TMUX_KEEP 1 && echo \"Session marked keep
 
 # ---- tmux config (persists in /config/.tmux.conf) ----
 add_line 'set -g mouse on' /config/.tmux.conf
+# Toggle mouse on/off with Prefix + m (Ctrl+B then m)
+add_line 'bind m set -g mouse\; display-message "Mouse: #{?mouse,on,off}"' /config/.tmux.conf
 
 # ---- tmux cleanup daemon: kills detached sessions after TMUX_TIMEOUT hours ----
 cat > /usr/local/bin/tmux-cleanup.sh << 'TMUXCLEANUP'
