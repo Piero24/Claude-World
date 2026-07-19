@@ -206,7 +206,8 @@ if [ -d /config/.nvm ]; then
     if [ "$INSTALLED_VERSION" != "$CLAUDE_CODE_VERSION" ]; then
         echo "[claude-world] Installing Claude Code ${CLAUDE_CODE_VERSION} (found: ${INSTALLED_VERSION})..."
         # Original (latest version): npm install -g @anthropic-ai/claude-code
-        su - "$USER" -c 'export HOME=/config && export NVM_DIR="/config/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && npm install -g @anthropic-ai/claude-code@'"${CLAUDE_CODE_VERSION}"
+        # npm install alone won't downgrade — uninstall first to force clean install
+        su - "$USER" -c 'export HOME=/config && export NVM_DIR="/config/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && npm uninstall -g @anthropic-ai/claude-code 2>/dev/null; npm install -g @anthropic-ai/claude-code@'"${CLAUDE_CODE_VERSION}"
         echo "[claude-world] Claude Code ${CLAUDE_CODE_VERSION} installed."
     else
         echo "[claude-world] Claude Code ${CLAUDE_CODE_VERSION} already installed, skipping."
