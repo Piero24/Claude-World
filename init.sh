@@ -58,6 +58,7 @@ REQUIRED_PACKAGES=(
     curl
     wget
     docker.io
+    docker-compose-v2
     tmux
     zsh
     nano
