@@ -202,7 +202,7 @@ su - "$USER" -c 'export HOME=/config && mkdir -p ~/.npm-global'
 #   4. Rebuild the container.
 CLAUDE_CODE_VERSION="2.1.207"
 if [ -d /config/.nvm ]; then
-    INSTALLED_VERSION=$(su - "$USER" -c 'export HOME=/config && export NVM_DIR="/config/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && claude --version 2>/dev/null | grep -oP "[\d]+\.[\d]+\.[\d]+" || echo "none"')
+    INSTALLED_VERSION=$(su - "$USER" -c 'export HOME=/config && export NVM_DIR="/config/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && claude --version 2>/dev/null | grep -oE "[0-9]+\.[0-9]+\.[0-9]+" | head -1 || echo "none"')
     if [ "$INSTALLED_VERSION" != "$CLAUDE_CODE_VERSION" ]; then
         echo "[claude-world] Installing Claude Code ${CLAUDE_CODE_VERSION} (found: ${INSTALLED_VERSION})..."
         # Original (latest version): npm install -g @anthropic-ai/claude-code
