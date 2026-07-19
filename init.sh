@@ -192,14 +192,30 @@ fi
 su - "$USER" -c 'export HOME=/config && mkdir -p ~/.npm-global'
 
 # ---- Claude Code ----
+# PINNED to 2.1.207: versions 2.1.214+ break the DeepSeek flash classifier
+# (auto-mode safety checks fail with "deepseek-v4-flash[1m] is temporarily unavailable").
+# To restore latest:
+#   1. Comment out the 5 pinned lines below.
+#   2. Uncomment the original install line:
+#      su - "$USER" -c '... npm install -g @anthropic-ai/claude-code'
+#   3. Remove "export ANTHROPIC_CLI_NO_UPDATE_CHECK=1" from the shell config section below.
+#   4. Rebuild the container.
+CLAUDE_CODE_VERSION="2.1.207"
 if [ -d /config/.nvm ]; then
-    if ! su - "$USER" -c 'export HOME=/config && export NVM_DIR="/config/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && which claude 2>/dev/null'; then
-        echo "[claude-world] Installing Claude Code..."
-        su - "$USER" -c 'export HOME=/config && export NVM_DIR="/config/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && npm install -g @anthropic-ai/claude-code'
+    INSTALLED_VERSION=$(su - "$USER" -c 'export HOME=/config && export NVM_DIR="/config/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && claude --version 2>/dev/null | grep -oP "[\d]+\.[\d]+\.[\d]+" || echo "none"')
+    if [ "$INSTALLED_VERSION" != "$CLAUDE_CODE_VERSION" ]; then
+        echo "[claude-world] Installing Claude Code ${CLAUDE_CODE_VERSION} (found: ${INSTALLED_VERSION})..."
+        # Original (latest version): npm install -g @anthropic-ai/claude-code
+        su - "$USER" -c 'export HOME=/config && export NVM_DIR="/config/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && npm install -g @anthropic-ai/claude-code@'"${CLAUDE_CODE_VERSION}"
+        echo "[claude-world] Claude Code ${CLAUDE_CODE_VERSION} installed."
     else
-        echo "[claude-world] Claude Code already installed, skipping."
+        echo "[claude-world] Claude Code ${CLAUDE_CODE_VERSION} already installed, skipping."
     fi
 fi
+
+# Disable Claude Code auto-updater (keep pinned version — remove when restoring latest)
+add_line 'export ANTHROPIC_CLI_NO_UPDATE_CHECK=1' /config/.bashrc
+add_line 'export ANTHROPIC_CLI_NO_UPDATE_CHECK=1' /config/.zshrc
 
 # ---- Shell config: force pip/npm/Go to install into /config ----
 for rcfile in /config/.bashrc /config/.zshrc; do
