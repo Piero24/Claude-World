@@ -254,6 +254,8 @@ export TMUX_AUTO=${TMUX_AUTO:-0}
 export TMUX_TIMEOUT=${TMUX_TIMEOUT:--1}
 export GITHUB_TOKEN=${GITHUB_TOKEN:-}
 export GH_TOKEN=${GH_TOKEN:-${GITHUB_TOKEN}}
+export CLAUDE_WEBHOOK_URL=${CLAUDE_WEBHOOK_URL:-}
+export CLAUDE_WEBHOOK_IDLE=${CLAUDE_WEBHOOK_IDLE:-60}
 # <<< Claude Code
 CLAUDECODE
 done
@@ -338,6 +340,19 @@ if [ ! -f "$CLAUDE_SETTINGS" ]; then
       "Bash(mkfs:*)",
       "Bash(gh repo delete:*)"
     ]
+  },
+  "hooks": {
+    "Notification": [
+      {
+        "matcher": "idle_prompt",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/local/bin/claude-idle-webhook.sh"
+          }
+        ]
+      }
+    ]
   }
 }
 CLAUDE_SETTINGS_EOF
@@ -346,6 +361,122 @@ CLAUDE_SETTINGS_EOF
 else
     echo "[claude-world] Claude Code settings.json already exists, skipping."
 fi
+
+# ---- Ensure idle_prompt webhook hook is configured in settings.json ----
+# Runs every boot (not just first) so existing installations get the hook too.
+if [ -n "$CLAUDE_WEBHOOK_URL" ] && [ "$CLAUDE_WEBHOOK_URL" != "CHANGE_ME_WEBHOOK_URL" ]; then
+    echo "[claude-world] Configuring idle_prompt webhook hook..."
+    python3 -c "
+import json, os
+settings_path = '/config/.claude/settings.json'
+try:
+    with open(settings_path) as f:
+        settings = json.load(f)
+except (FileNotFoundError, json.JSONDecodeError):
+    settings = {}
+
+hooks = settings.setdefault('hooks', {})
+notifications = hooks.setdefault('Notification', [])
+
+# Check if idle_prompt with our webhook script already exists
+has_idle_webhook = any(
+    h.get('matcher') == 'idle_prompt' and
+    any(c.get('command', '') == '/usr/local/bin/claude-idle-webhook.sh'
+        for c in h.get('hooks', []))
+    for h in notifications
+)
+
+if not has_idle_webhook:
+    notifications.append({
+        'matcher': 'idle_prompt',
+        'hooks': [{
+            'type': 'command',
+            'command': '/usr/local/bin/claude-idle-webhook.sh'
+        }]
+    })
+    with open(settings_path, 'w') as f:
+        json.dump(settings, f, indent=2)
+    print('[claude-world] idle_prompt webhook hook added to settings.json')
+else:
+    print('[claude-world] idle_prompt webhook hook already configured')
+"
+fi
+
+# ---- Claude idle webhook sender ----
+# Called by the idle_prompt Notification hook in settings.json.
+# Reads session info from stdin (JSON from Claude Code hook system).
+cat > /usr/local/bin/claude-idle-webhook.sh << 'IDLEWEBHOOK'
+#!/bin/bash
+# ================================================================
+# claude-idle-webhook.sh — Send webhook when Claude goes idle
+# Called by Claude Code's idle_prompt Notification hook.
+# Receives JSON on stdin: {session_id, transcript_path, cwd, ...}
+# ================================================================
+
+CLAUDE_WEBHOOK_URL="${CLAUDE_WEBHOOK_URL:-}"
+[ -z "$CLAUDE_WEBHOOK_URL" ] && exit 0
+
+# Read hook metadata from stdin (sent by Claude Code)
+HOOK_DATA=$(cat 2>/dev/null)
+SESSION_ID=$(echo "$HOOK_DATA" | python3 -c "import sys,json; print(json.loads(sys.stdin.read()).get('session_id',''))" 2>/dev/null)
+TRANSCRIPT=$(echo "$HOOK_DATA" | python3 -c "import sys,json; print(json.loads(sys.stdin.read()).get('transcript_path',''))" 2>/dev/null)
+
+# ---- Check if anyone is connected ----
+# 'who' shows active login sessions (SSH and ttyd). If count is 0,
+# no one is watching the terminal.
+ACTIVE=$(who 2>/dev/null | wc -l)
+if [ "$ACTIVE" -gt 0 ]; then
+    exit 0
+fi
+
+# ---- Extract last assistant message from transcript ----
+LAST_OUTPUT=""
+if [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ]; then
+    LAST_OUTPUT=$(python3 -c "
+import json, sys
+try:
+    with open('$TRANSCRIPT') as f:
+        lines = f.readlines()
+    # Find the last assistant message with text content
+    for line in reversed(lines):
+        try:
+            msg = json.loads(line.strip())
+            if msg.get('message',{}).get('role') == 'assistant':
+                content = msg['message'].get('content', [])
+                texts = []
+                for block in content:
+                    if block.get('type') == 'text':
+                        texts.append(block.get('text', ''))
+                if texts:
+                    print(''.join(texts))
+                    break
+        except:
+            continue
+except:
+    pass
+" 2>/dev/null)
+fi
+
+# ---- Build and send webhook ----
+TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+HOST=$(hostname 2>/dev/null || echo "claude-world")
+
+# Escape the last output for JSON
+ESCAPED_OUTPUT=$(echo "$LAST_OUTPUT" | python3 -c "
+import sys, json
+print(json.dumps(sys.stdin.read()))
+" 2>/dev/null)
+
+curl -s --connect-timeout 10 --max-time 30 \
+    -X POST "$CLAUDE_WEBHOOK_URL" \
+    -H "Content-Type: application/json" \
+    -d "{\"event\":\"claude_idle\",\"timestamp\":\"$TS\",\"hostname\":\"$HOST\",\"session_id\":\"$SESSION_ID\",\"last_output\":$ESCAPED_OUTPUT}" \
+    > /dev/null 2>&1 &
+
+exit 0
+IDLEWEBHOOK
+chmod +x /usr/local/bin/claude-idle-webhook.sh
+echo "[claude-world] Claude idle webhook sender created at /usr/local/bin/claude-idle-webhook.sh"
 
 # ---- cleanup-merged skill ----
 # Written on first boot ONLY — edit /config/.claude/skills/cleanup-merged.md to customize.

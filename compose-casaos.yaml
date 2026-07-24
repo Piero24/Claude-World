@@ -30,6 +30,12 @@ services:
       GIT_USER_NAME: CHANGE_ME_GIT_NAME
       GIT_USER_EMAIL: CHANGE_ME_GIT_EMAIL
       GITHUB_TOKEN: CHANGE_ME_GITHUB_TOKEN
+      # --- Webhook Notifications ---
+      # Set to a webhook URL (e.g. https://hooks.slack.com/...) to receive
+      # a POST when Claude finishes responding and no one is connected.
+      CLAUDE_WEBHOOK_URL: ""
+      # Seconds of terminal silence before Claude is considered idle (min 60).
+      CLAUDE_WEBHOOK_IDLE: "60"
     x-casaos:
       envs:
         - container: PUID
@@ -62,6 +68,12 @@ services:
         - container: GITHUB_TOKEN
           description:
             en_us: "GitHub fine-grained PAT (Settings → Developer settings → Personal access tokens)."
+        - container: CLAUDE_WEBHOOK_URL
+          description:
+            en_us: "Webhook URL for notifications when Claude finishes responding and no one is connected. Leave empty to disable."
+        - container: CLAUDE_WEBHOOK_IDLE
+          description:
+            en_us: "Seconds of terminal silence before Claude is considered idle (minimum 60)."
     ports:
       - target: 7681
         published: 7681
