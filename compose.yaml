@@ -31,6 +31,12 @@ services:
       GIT_USER_NAME: CHANGE_ME_GIT_NAME
       GIT_USER_EMAIL: CHANGE_ME_GIT_EMAIL
       GITHUB_TOKEN: CHANGE_ME_GITHUB_TOKEN
+      # --- Webhook Notifications ---
+      # Set to a webhook URL (e.g. https://hooks.slack.com/...) to receive
+      # a POST when Claude finishes responding and no one is connected.
+      CLAUDE_WEBHOOK_URL: ""
+      # Seconds of terminal silence before Claude is considered idle (min 60).
+      CLAUDE_WEBHOOK_IDLE: "60"
     ports:
       - "7681:7681"
       - "2222:22"

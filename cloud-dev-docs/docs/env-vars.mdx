@@ -132,3 +132,46 @@ Use `TMUX_TIMEOUT` to auto-clean detached sessions. For example, `TMUX_TIMEOUT=2
 
 See [Daily Workflow](./daily-workflow) for full tmux usage.
 
+## Webhook Notifications
+
+When Claude Code finishes responding and waits for input (60+ seconds idle), a webhook can fire if no one is connected to the container. This is useful for long-running tasks: start Claude inside tmux, disconnect, and get notified when Claude is ready for your next prompt.
+
+The feature uses Claude Code's built-in `idle_prompt` Notification hook. No external daemon or polling is required.
+
+| Env var | Default | What it does |
+|---------|---------|---------------|
+| `CLAUDE_WEBHOOK_URL` | *(empty)* | Webhook endpoint URL. Leave empty to disable. Receives a JSON POST when Claude goes idle with no active connections |
+| `CLAUDE_WEBHOOK_IDLE` | `60` | Seconds of terminal silence before Claude is considered idle (minimum 60, matching Claude Code's hook timing) |
+
+### Webhook payload
+
+```json
+{
+  "event": "claude_idle",
+  "timestamp": "2026-07-24T15:30:00Z",
+  "hostname": "claude-world",
+  "session_id": "35e6a910-...",
+  "last_output": "The fix has been applied to utils.py.\n\nAll tests pass.\n\n> What should I do next?"
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `event` | Fixed value `"claude_idle"` |
+| `timestamp` | UTC ISO 8601 timestamp |
+| `hostname` | Container hostname |
+| `session_id` | Claude Code session ID that triggered the hook |
+| `last_output` | Last text message from Claude (up to 2000 characters) |
+
+### How it works
+
+1. You connect via SSH or web terminal, Claude auto-launches
+2. You give Claude a task, it starts processing
+3. You disconnect (tmux keeps Claude running if `TMUX_AUTO=1`)
+4. Claude finishes the task and waits for input
+5. After 60 seconds of idle, Claude Code fires the `idle_prompt` hook
+6. The hook checks `who` for active connections
+7. If no one is connected, it sends the webhook with Claude's last output
+
+The webhook can point to any HTTP endpoint: Slack webhooks, Discord webhooks, Telegram bots, Zapier, n8n, ntfy, or a custom server.
+
