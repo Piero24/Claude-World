@@ -464,11 +464,7 @@ HOST=$(hostname 2>/dev/null || echo "claude-world")
 # Escape the last output for JSON
 ESCAPED_OUTPUT=$(echo "$LAST_OUTPUT" | python3 -c "
 import sys, json
-text = sys.stdin.read()
-max_chars = 4000
-if len(text) > max_chars:
-    text = '...[truncated]...\n' + text[-(max_chars):]
-print(json.dumps(text))
+print(json.dumps(sys.stdin.read()))
 " 2>/dev/null)
 
 curl -s --connect-timeout 10 --max-time 30 \
