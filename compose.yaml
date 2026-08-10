@@ -16,6 +16,7 @@ services:
       PASSWORD: CHANGE_ME_WEB_PASSWORD
       SUDO_PASSWORD: CHANGE_ME_SUDO_PASSWORD
       TMUX_AUTO: "0"
+      TMUX_SESSION: "main"
       TMUX_TIMEOUT: "-1"
       # --- Claude Code ---
       # Leave empty to use Anthropic directly. Set to https://api.deepseek.com/anthropic

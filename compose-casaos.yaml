@@ -16,6 +16,7 @@ services:
       PASSWORD: CHANGE_ME_WEB_PASSWORD
       SUDO_PASSWORD: CHANGE_ME_SUDO_PASSWORD
       TMUX_AUTO: "0"
+      TMUX_SESSION: "main"
       TMUX_TIMEOUT: "-1"
       # --- Claude Code ---
       # Leave empty to use Anthropic directly. Set to a third-party URL if needed.
@@ -59,6 +60,9 @@ services:
         - container: TMUX_AUTO
           description:
             en_us: "Enable persistent tmux sessions (0 = disabled, 1 = enabled)."
+        - container: TMUX_SESSION
+          description:
+            en_us: "Default tmux session name (overridable per SSH connection via SendEnv TMUX_SESSION)."
         - container: TMUX_TIMEOUT
           description:
             en_us: "Hours before detached tmux sessions are killed (-1 = never)."

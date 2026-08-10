@@ -158,9 +158,10 @@ fi
 echo "[claude-world] Configuring SSH..."
 sed -i 's/#PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
 sed -i 's/^PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
-# Allow custom env vars from SSH clients (for tmux auto-attach + timeout)
+# Allow custom env vars from SSH clients (for tmux auto-attach, session name, timeout)
 if ! grep -q "AcceptEnv TMUX_AUTO" /etc/ssh/sshd_config 2>/dev/null; then
     echo "AcceptEnv TMUX_AUTO" >> /etc/ssh/sshd_config
+    echo "AcceptEnv TMUX_SESSION" >> /etc/ssh/sshd_config
     echo "AcceptEnv TMUX_TIMEOUT" >> /etc/ssh/sshd_config
 fi
 
@@ -251,6 +252,7 @@ export ANTHROPIC_DEFAULT_HAIKU_MODEL=${ANTHROPIC_DEFAULT_HAIKU_MODEL:-claude-hai
 export CLAUDE_CODE_SUBAGENT_MODEL=${CLAUDE_CODE_SUBAGENT_MODEL:-claude-haiku-4-5}
 export CLAUDE_CODE_EFFORT_LEVEL=${CLAUDE_CODE_EFFORT_LEVEL:-max}
 export TMUX_AUTO=${TMUX_AUTO:-0}
+export TMUX_SESSION=${TMUX_SESSION:-main}
 export TMUX_TIMEOUT=${TMUX_TIMEOUT:--1}
 export GITHUB_TOKEN=${GITHUB_TOKEN:-}
 export GH_TOKEN=${GH_TOKEN:-${GITHUB_TOKEN}}
@@ -570,7 +572,7 @@ fi
 
 cd /workplace
 if [ "$TMUX_AUTO" = "1" ] && [ -z "$TMUX" ]; then
-    exec tmux new-session -A -s main
+    exec tmux new-session -A -s "${TMUX_SESSION:-main}"
 fi
 if [ -z "$NO_CLAUDE" ]; then
     claude
@@ -580,8 +582,8 @@ AUTOLAUNCH
 done
 
 # ---- tmux aliases ----
-add_line 'alias ta="tmux new -A -s main"' /config/.bashrc
-add_line 'alias ta="tmux new -A -s main"' /config/.zshrc
+add_line 'alias ta="tmux new -A -s \"\${TMUX_SESSION:-main}\""' /config/.bashrc
+add_line 'alias ta="tmux new -A -s \"\${TMUX_SESSION:-main}\""' /config/.zshrc
 add_line 'alias tmux-keep="tmux setenv TMUX_KEEP 1 && echo \"Session marked keep — will never be auto-cleaned\""' /config/.bashrc
 add_line 'alias tmux-keep="tmux setenv TMUX_KEEP 1 && echo \"Session marked keep — will never be auto-cleaned\""' /config/.zshrc
 
