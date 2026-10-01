@@ -10,12 +10,12 @@ sidebar_position: 5
 # Open a terminal and connect via SSH
 ssh abc@<your-server> -p 2222
 # → Enter SUDO_PASSWORD
-# → You're in /workplace and Claude is ready.
+# → You're in /workplace and the agent is ready.
 ```
 
-Claude launches automatically on every login (SSH and web terminal). Exit Claude (`/exit` or `Ctrl+D`) and you're dropped to a normal shell prompt.
+The selected agent (`AGENT`) launches automatically on every login (SSH and web terminal). Exit the agent (`/exit` or `Ctrl+D`) and you're dropped to a normal shell prompt.
 
-Open `http://<your-server>:7681` in a browser for the web terminal, or SSH in. Both launch Claude in `/workplace` automatically.
+Open `http://<your-server>:7681` in a browser for the web terminal, or SSH in. Both launch the agent in `/workplace` automatically.
 
 ## Persistent sessions with tmux
 
@@ -30,22 +30,22 @@ The server auto-detects where you're connecting from and starts tmux only when n
 
 With `TMUX_TIMEOUT=2`: if you disconnect and don't reconnect within 2 hours, the tmux session auto-cleans. No zombie sessions.
 
-**From Mac/PC:** Claude launches immediately, ask your question, get an answer, exit, done.
+**From Mac/PC:** The agent launches immediately, ask your question, get an answer, exit, done.
 
 ```bash
-ssh abc@<server> -p 2222    # → Claude auto-launches in /workplace
+ssh abc@<server> -p 2222    # → agent auto-launches in /workplace
 ```
 
-**From iPhone/Termius:** auto-attaches to a persistent tmux session. Claude launches automatically inside tmux. Switch apps, lose signal, everything keeps running.
+**From iPhone/Termius:** auto-attaches to a persistent tmux session. The agent launches automatically inside tmux. Switch apps, lose signal, everything keeps running.
 
 ```bash
 ssh abc@<server> -p 2222    # → auto-attached to tmux "main" (Termius sent TMUX_AUTO=1)
-                             # → Claude launches automatically inside tmux
+                             # → agent launches automatically inside tmux
 ```
 
-Next time you connect from Termius, you reattach to the same session with Claude still running.
+Next time you connect from Termius, you reattach to the same session with the agent still running.
 
-**How it works:** Login (SSH or web terminal) sources `.bashrc`: `cd /workplace`, then if `TMUX_AUTO=1` is set, `exec tmux new-session -A -s main` wraps the session in tmux first. Finally, `claude` launches. Exiting Claude returns you to a shell prompt. Reconnecting with tmux reattaches to the running session (Claude still there).
+**How it works:** Login (SSH or web terminal) sources `.bashrc`: `cd /workplace`, then if `TMUX_AUTO=1` is set, `exec tmux new-session -A -s main` wraps the session in tmux first. Finally, the selected agent binary launches. Exiting the agent returns you to a shell prompt. Reconnecting with tmux reattaches to the running session (agent still there).
 
 **Key commands inside tmux:**
 
@@ -88,7 +88,7 @@ Mid-task and realize you need more time? Run `tmux-keep` inside the tmux session
 You don't need a local machine. Everything runs on the server:
 
 - **Terminal**: web terminal at `http://<server>:7681` or SSH from anywhere
-- **Claude Code / long tasks**: inside tmux, survives disconnects
+- **Agent CLI / long tasks**: inside tmux, survives disconnects
 - **Files**: live at `/workplace/`, visible from terminal and SSH
 
 ## Accessing from elsewhere
@@ -103,7 +103,7 @@ You don't need a local machine. Everything runs on the server:
 
 Exiting works in two steps:
 
-1. **Exit Claude**: type `/exit` or press `Ctrl+D`. You're dropped to a normal shell prompt in `/workplace`
+1. **Exit the agent**: type `/exit` or press `Ctrl+D`. You're dropped to a normal shell prompt in `/workplace`
 2. **Exit shell**: type `exit` or press `Ctrl+D` again. The SSH or web terminal session ends
 
 If you're inside tmux, detach instead of exiting to keep the session alive: press `Ctrl+B` then `D`. Next time you connect, you reattach to the same session.

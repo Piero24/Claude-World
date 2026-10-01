@@ -17,6 +17,16 @@ services:
       SUDO_PASSWORD: CHANGE_ME_SUDO_PASSWORD
       TMUX_AUTO: "0"
       TMUX_TIMEOUT: "-1"
+      # --- Agent Selector ---
+      # Which coding agent to install and auto-launch.
+      # Options: claude | codex
+      AGENT: claude
+      # --- Generic BYOK (Bring Your Own Key) ---
+      # Fill once and init.sh maps it to the selected agent.
+      # Per-agent keys below take precedence if set.
+      AGENT_API_KEY: ""
+      AGENT_MODEL: ""
+      AGENT_BASE_URL: ""
       # --- Claude Code ---
       # Leave empty to use Anthropic directly. Set to https://api.deepseek.com/anthropic
       # or https://openrouter.ai/api/anthropic to use a third-party provider.
@@ -28,15 +38,19 @@ services:
       ANTHROPIC_DEFAULT_HAIKU_MODEL: claude-haiku-4-5
       CLAUDE_CODE_SUBAGENT_MODEL: claude-haiku-4-5
       CLAUDE_CODE_EFFORT_LEVEL: max
+      # --- OpenAI Codex ---
+      # Optional: falls back to AGENT_API_KEY / AGENT_MODEL if empty.
+      OPENAI_API_KEY: ""
+      CODEX_MODEL: ""
       GIT_USER_NAME: CHANGE_ME_GIT_NAME
       GIT_USER_EMAIL: CHANGE_ME_GIT_EMAIL
       GITHUB_TOKEN: CHANGE_ME_GITHUB_TOKEN
       # --- Webhook Notifications ---
       # Set to a webhook URL (e.g. https://hooks.slack.com/...) to receive
-      # a POST when Claude finishes responding and no one is connected.
-      CLAUDE_WEBHOOK_URL: ""
-      # Seconds of terminal silence before Claude is considered idle (min 60).
-      CLAUDE_WEBHOOK_IDLE: "60"
+      # a POST when the agent finishes responding and no one is connected.
+      AGENT_WEBHOOK_URL: ""
+      # Seconds of terminal silence before the agent is considered idle (min 60).
+      AGENT_WEBHOOK_IDLE: "60"
     ports:
       - "7681:7681"
       - "2222:22"

@@ -39,7 +39,8 @@ nano compose.yaml
 Replace under the **dev** service:
 - `CHANGE_ME_WEB_PASSWORD`: login password for the ttyd web terminal
 - `CHANGE_ME_SUDO_PASSWORD`: sudo password, also used for SSH login
-- `CHANGE_ME_ANTHROPIC_KEY`: your [Anthropic API key](https://console.anthropic.com)
+- `AGENT`: which coding agent to use (`claude` or `codex`)
+- `AGENT_API_KEY`: your agent API key ([Anthropic](https://console.anthropic.com) for Claude, [OpenAI](https://platform.openai.com/api-keys) for Codex). Or use the per-agent key (`ANTHROPIC_AUTH_TOKEN` / `OPENAI_API_KEY`)
 - `CHANGE_ME_GIT_NAME` / `CHANGE_ME_GIT_EMAIL`: your Git identity
 - `CHANGE_ME_GITHUB_TOKEN`: GitHub [fine-grained PAT](https://github.com/settings/tokens?type=beta)
 - `TZ`: your timezone
@@ -60,9 +61,9 @@ You should see one container: `claude-world`.
 | Web terminal | `http://<server-ip>:7681`, ttyd login (user: `abc`, pass: `PASSWORD`) |
 | SSH | `ssh abc@<server-ip> -p 2222`, login with `SUDO_PASSWORD` |
 
-Both methods auto-launch Claude in `/workplace`. Exit Claude with `/exit` or `Ctrl+D` to get a normal shell prompt.
+Both methods auto-launch the selected agent in `/workplace`. Exit the agent with `/exit` or `Ctrl+D` to get a normal shell prompt.
 
-If both work and Claude starts, the container is running correctly.
+If both work and the agent starts, the container is running correctly.
 
   </TabItem>
   <TabItem value="casaos" label="CasaOS">
@@ -86,7 +87,8 @@ nano /DATA/AppData/claude-world/compose-casaos.yaml
 Replace under the **dev** service:
 - `CHANGE_ME_WEB_PASSWORD`: login password for the ttyd web terminal
 - `CHANGE_ME_SUDO_PASSWORD`: sudo password, also used for SSH login
-- `CHANGE_ME_ANTHROPIC_KEY`: your [Anthropic API key](https://console.anthropic.com)
+- `AGENT`: which coding agent to use (`claude` or `codex`, also asked by the installer)
+- `AGENT_API_KEY`: your agent API key ([Anthropic](https://console.anthropic.com) for Claude, [OpenAI](https://platform.openai.com/api-keys) for Codex). Or use the per-agent key (`ANTHROPIC_AUTH_TOKEN` / `OPENAI_API_KEY`)
 - `CHANGE_ME_GIT_NAME` / `CHANGE_ME_GIT_EMAIL`: your Git identity
 - `CHANGE_ME_GITHUB_TOKEN`: GitHub [fine-grained PAT](https://github.com/settings/tokens?type=beta)
 - `TZ`: your timezone
@@ -110,9 +112,9 @@ You should see one container: `claude-world`.
 | Web terminal | `http://<casaos-ip>:7681`, ttyd login (user: `abc`, pass: `PASSWORD`) |
 | SSH | `ssh abc@<casaos-ip> -p 2222`, login with `SUDO_PASSWORD` |
 
-Both methods auto-launch Claude in `/workplace`. Exit Claude with `/exit` or `Ctrl+D` to get a normal shell prompt.
+Both methods auto-launch the selected agent in `/workplace`. Exit the agent with `/exit` or `Ctrl+D` to get a normal shell prompt.
 
-If both work and Claude starts, the container is running correctly.
+If both work and the agent starts, the container is running correctly.
 
   </TabItem>
 </Tabs>
