@@ -52,11 +52,13 @@ echo ""
 echo "Which coding agent should the container install and auto-launch?"
 echo "  1) claude  (Anthropic Claude Code — default)"
 echo "  2) codex   (OpenAI Codex CLI)"
+echo "  3) cline   (Cline CLI — auth with 'cline auth' on first login)"
 echo ""
 AGENT_CHOICE="claude"
 read -p "Agent [1]: " AGENT_NUM < /dev/tty
 case "$AGENT_NUM" in
     2|[cC][oO][dD][eE][xX]) AGENT_CHOICE="codex" ;;
+    3|[cC][lL][iI][nN][eE]) AGENT_CHOICE="cline" ;;
     ""|1|[cC][lL][aA][uU][dD][eE]) AGENT_CHOICE="claude" ;;
     *)
         echo "Unknown option '$AGENT_NUM' — using 'claude'."
@@ -108,6 +110,8 @@ echo "       CHANGE_ME_WEB_PASSWORD   → your ttyd login password"
 echo "       CHANGE_ME_SUDO_PASSWORD  → your sudo/SSH password"
 if [ "$AGENT_CHOICE" = "codex" ]; then
 echo "       OPENAI_API_KEY (or AGENT_API_KEY) → your OpenAI API key"
+elif [ "$AGENT_CHOICE" = "cline" ]; then
+echo "       AGENT_API_KEY (optional) → your provider key, then run 'cline auth' on first login"
 else
 echo "       CHANGE_ME_ANTHROPIC_KEY  → your Anthropic API key"
 fi
