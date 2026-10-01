@@ -111,7 +111,7 @@ echo "       CHANGE_ME_SUDO_PASSWORD  → your sudo/SSH password"
 if [ "$AGENT_CHOICE" = "codex" ]; then
 echo "       OPENAI_API_KEY (or AGENT_API_KEY) → your OpenAI API key"
 elif [ "$AGENT_CHOICE" = "cline" ]; then
-echo "       AGENT_API_KEY (optional) → your provider key, then run 'cline auth' on first login"
+echo "       AGENT_API_KEY (or CLINE_API_KEY) → your provider key (pre-seeded on boot)"
 else
 echo "       CHANGE_ME_ANTHROPIC_KEY  → your Anthropic API key"
 fi

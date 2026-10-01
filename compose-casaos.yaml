@@ -44,8 +44,8 @@ services:
       # Version pin (defaults to known-good 0.160.1; set to 'latest' to opt out of pinning)
       CODEX_VERSION: ""
       # --- Cline ---
-      # Auth: run `cline auth` on first login (interactive, persists in /config/.cline).
-      # CLINE_API_KEY is optional convenience: falls back to AGENT_API_KEY.
+      # Headless BYOK: init.sh pre-seeds providers.json from these vars on boot.
+      # CLINE_API_KEY falls back to AGENT_API_KEY.
       CLINE_API_KEY: ""
       CLINE_PROVIDER: anthropic
       CLINE_MODEL: ""
@@ -104,7 +104,7 @@ services:
             en_us: "Codex CLI version pin (defaults to 0.160.1; set to 'latest' to opt out of pinning)."
         - container: CLINE_API_KEY
           description:
-            en_us: "Provider API key for Cline (optional convenience, falls back to AGENT_API_KEY). Run 'cline auth' on first login — the reliable path, persists in /config."
+            en_us: "Provider API key for Cline (falls back to AGENT_API_KEY). Pre-seeded into providers.json on boot; 'cline auth' also works for OAuth providers."
         - container: CLINE_PROVIDER
           description:
             en_us: "Cline provider id (e.g. anthropic, openai). Default: anthropic."

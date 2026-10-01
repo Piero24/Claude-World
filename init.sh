@@ -103,7 +103,7 @@ if [ "$AGENT" = "cline" ]; then _CLINE_SCOPED_MODEL="${_GENERIC_MODEL:-}"; else 
 EFFECTIVE_CLINE_MODEL="${CLINE_MODEL:-${_CLINE_SCOPED_MODEL:-}}"
 EFFECTIVE_CLINE_PROVIDER="${CLINE_PROVIDER:-anthropic}"
 # Cline convenience: expose its key under the provider's standard env name
-# (best effort — `cline auth` on first login is the reliable path, persists in /config/.cline).
+# (in addition to the providers.json pre-seed below).
 # The value is spliced into an UNQUOTED heredoc when writing the shell env
 # block, so escape \, `, $ (heredoc expansion at write time) and ' (breaks
 # the single-quote wrapping at source time).
@@ -317,11 +317,9 @@ install_codex() {
 }
 
 # ---- Cline (only when AGENT=cline) ----
-# Installed via npm (binary: cline). Auth via `cline auth` on first login
-# (interactive, persists in /config/.cline); per-run flags -P/--provider,
-# -m/--model and -k/--key also available. API-key-only headless setup is
-# NOT pre-seeded (providers.json format is IDE-managed) — env keys below
-# are best-effort convenience.
+# Installed via npm (binary: cline). Headless BYOK via providers.json
+# pre-seed below; `cline auth` remains available for OAuth/subscription
+# providers. Per-run flags -P/--provider, -m/--model, -k/--key also work.
 install_cline() {
     if [ -d /config/.nvm ]; then
         INSTALLED_CLINE=$(su - "$USER" -c 'export HOME=/config && export NVM_DIR="/config/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && cline --version 2>/dev/null | head -1 || echo "none"')
@@ -427,6 +425,60 @@ if [ "$AGENT" = "codex" ]; then
         chown -R "$USER:$USER" /config/.codex
     else
         echo "[claude-world] WARNING: No OpenAI key found (OPENAI_API_KEY or AGENT_API_KEY) — Codex will prompt for auth on first run."
+    fi
+fi
+
+# ---- Cline auth pre-seed (headless BYOK, only when AGENT=cline) ----
+# Writes the selected provider into ~/.cline/data/settings/providers.json:
+#   providers.<id>.settings = {provider, apiKey, model?}, lastUsedProvider, tokenSource "manual".
+# Shape confirmed from a real providers.json (v1, manual token source).
+# Merge (not overwrite): existing providers and "modes" are preserved so
+# `cline auth` for OAuth/subscription providers keeps working alongside.
+# Runs every boot so compose.yaml edits take effect; user can still re-auth.
+if [ "$AGENT" = "cline" ]; then
+    if [ -n "$EFFECTIVE_CLINE_API_KEY" ] && [ "$EFFECTIVE_CLINE_API_KEY" != "CHANGE_ME_CLINE_KEY" ]; then
+        echo "[claude-world] Pre-seeding Cline provider '${EFFECTIVE_CLINE_PROVIDER:-anthropic}' auth..."
+        export CLINE_PRESEED_PROVIDER="${EFFECTIVE_CLINE_PROVIDER:-anthropic}"
+        export CLINE_PRESEED_API_KEY="$EFFECTIVE_CLINE_API_KEY"
+        export CLINE_PRESEED_MODEL="${EFFECTIVE_CLINE_MODEL:-}"
+        su - "$USER" -c 'export HOME=/config && python3 - << "PYEOF"
+import json, os
+from datetime import datetime, timezone
+path = os.path.expanduser("~/.cline/data/settings/providers.json")
+provider = os.environ.get("CLINE_PRESEED_PROVIDER", "anthropic")
+api_key = os.environ.get("CLINE_PRESEED_API_KEY", "")
+model = os.environ.get("CLINE_PRESEED_MODEL", "")
+try:
+    with open(path) as f:
+        data = json.load(f)
+except (FileNotFoundError, json.JSONDecodeError):
+    data = {"version": 1, "modes": {}}
+data.setdefault("version", 1)
+data.setdefault("modes", {})
+providers = data.setdefault("providers", {})
+entry = providers.get(provider, {})
+settings = entry.get("settings", {})
+settings["provider"] = provider
+settings["apiKey"] = api_key
+if model:
+    settings["model"] = model
+elif "model" not in settings:
+    # Leave model unset so Cline uses the provider default on first run.
+    pass
+entry["settings"] = settings
+entry["updatedAt"] = datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+entry["tokenSource"] = "manual"
+providers[provider] = entry
+data["lastUsedProvider"] = provider
+os.makedirs(os.path.dirname(path), exist_ok=True)
+with open(path, "w") as f:
+    json.dump(data, f, indent=2)
+    f.write("\n")
+print(f"[claude-world] Cline providers.json updated (provider={provider})")
+PYEOF'
+        unset CLINE_PRESEED_PROVIDER CLINE_PRESEED_API_KEY CLINE_PRESEED_MODEL
+    else
+        echo "[claude-world] WARNING: No Cline key found (CLINE_API_KEY or AGENT_API_KEY) — run 'cline auth' on first login."
     fi
 fi
 
