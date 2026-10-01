@@ -19,7 +19,7 @@ services:
       TMUX_TIMEOUT: "-1"
       # --- Agent Selector ---
       # Which coding agent to install and auto-launch.
-      # Options: claude | codex
+      # Options: claude | codex | cline
       AGENT: claude
       # --- Generic BYOK (Bring Your Own Key) ---
       # Fill once and init.sh maps it to the selected agent.
@@ -42,6 +42,14 @@ services:
       # Optional: falls back to AGENT_API_KEY / AGENT_MODEL if empty.
       OPENAI_API_KEY: ""
       CODEX_MODEL: ""
+      # --- Cline ---
+      # Headless BYOK: init.sh pre-seeds ~/.cline/data/settings/providers.json
+      # from these vars on every boot (merge — existing providers preserved).
+      # CLINE_API_KEY falls back to AGENT_API_KEY; also exported under the
+      # provider's standard env name (see CLINE_PROVIDER) as convenience.
+      CLINE_API_KEY: ""
+      CLINE_PROVIDER: anthropic
+      CLINE_MODEL: ""
       GIT_USER_NAME: CHANGE_ME_GIT_NAME
       GIT_USER_EMAIL: CHANGE_ME_GIT_EMAIL
       GITHUB_TOKEN: CHANGE_ME_GITHUB_TOKEN

@@ -19,7 +19,7 @@ services:
       TMUX_TIMEOUT: "-1"
       # --- Agent Selector ---
       # Which coding agent to install and auto-launch.
-      # Options: claude | codex
+      # Options: claude | codex | cline
       AGENT: claude
       # --- Generic BYOK (Bring Your Own Key) ---
       # Fill once and init.sh maps it to the selected agent.
@@ -40,6 +40,12 @@ services:
       # Optional: falls back to AGENT_API_KEY / AGENT_MODEL if empty.
       OPENAI_API_KEY: ""
       CODEX_MODEL: ""
+      # --- Cline ---
+      # Headless BYOK: init.sh pre-seeds providers.json from these vars on boot.
+      # CLINE_API_KEY falls back to AGENT_API_KEY.
+      CLINE_API_KEY: ""
+      CLINE_PROVIDER: anthropic
+      CLINE_MODEL: ""
       GIT_USER_NAME: CHANGE_ME_GIT_NAME
       GIT_USER_EMAIL: CHANGE_ME_GIT_EMAIL
       GITHUB_TOKEN: CHANGE_ME_GITHUB_TOKEN
@@ -80,7 +86,7 @@ services:
             en_us: "Anthropic API key for Claude Code. Get one at console.anthropic.com."
         - container: AGENT
           description:
-            en_us: "Which coding agent to install and auto-launch: claude or codex."
+            en_us: "Which coding agent to install and auto-launch: claude, codex or cline."
         - container: AGENT_API_KEY
           description:
             en_us: "Generic API key, mapped to the selected agent. Per-agent keys take precedence if set."
@@ -90,6 +96,15 @@ services:
         - container: OPENAI_API_KEY
           description:
             en_us: "OpenAI API key for Codex. Falls back to AGENT_API_KEY if empty."
+        - container: CLINE_API_KEY
+          description:
+            en_us: "Provider API key for Cline (falls back to AGENT_API_KEY). Pre-seeded into providers.json on boot; 'cline auth' also works for OAuth providers."
+        - container: CLINE_PROVIDER
+          description:
+            en_us: "Cline provider id (e.g. anthropic, openai). Default: anthropic."
+        - container: CLINE_MODEL
+          description:
+            en_us: "Cline model override. Falls back to AGENT_MODEL if empty. Leave empty for Cline default."
         - container: GITHUB_TOKEN
           description:
             en_us: "GitHub fine-grained PAT (Settings → Developer settings → Personal access tokens)."
