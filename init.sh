@@ -633,4 +633,10 @@ done
 # ---- Fix ownership ----
 chown -R "$USER:$USER" /config
 
+# ---- Workplace: allow mkdir at root (mount owned by PUID, user may differ) ----
+if [ -d /workplace ]; then
+    chown "$USER:$USER" /workplace
+    chmod 755 /workplace
+fi
+
 echo "[claude-world] Init complete. SSH is running as '$USER'. ttyd on :7681. nvm, Node, Claude Code are ready."
