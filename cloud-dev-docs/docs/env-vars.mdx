@@ -44,6 +44,8 @@ CLINE_PROVIDER: anthropic  # e.g. anthropic, openai
 
 Then on first login run `cline auth` (interactive, persists in `/config/.cline`). Env keys are convenience only — Cline's `providers.json` is IDE-managed, so headless API-key-only setup is best-effort. Per-run flags also work: `cline -P anthropic -m <model> -k <key> "task"`.
 
+> NOTE: merge pre-seed into `providers.json` is implemented in `init.sh` but UNTESTED against a real Cline binary. Before claiming zero-touch BYOK: boot with `AGENT=cline`, confirm `cline` picks up the pre-seeded provider without prompting, and check with maintainers which providers accept `apiKey` in settings vs OAuth-only.
+
 Or use the per-agent key instead of the generic one (`OPENAI_API_KEY: sk-...` for Codex, `ANTHROPIC_AUTH_TOKEN` for Claude, `CLINE_API_KEY` for Cline).
 
 ## Claude Code / API

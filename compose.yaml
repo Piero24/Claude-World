@@ -43,10 +43,10 @@ services:
       OPENAI_API_KEY: ""
       CODEX_MODEL: ""
       # --- Cline ---
-      # Auth: run `cline auth` on first login (interactive, persists in /config/.cline).
-      # CLINE_API_KEY is optional convenience: falls back to AGENT_API_KEY,
-      # exported under the provider's standard env name (see CLINE_PROVIDER).
-      # Env keys alone may NOT be enough headless (providers.json is IDE-managed).
+      # Headless BYOK: init.sh pre-seeds ~/.cline/data/settings/providers.json
+      # from these vars on every boot (merge — existing providers preserved).
+      # CLINE_API_KEY falls back to AGENT_API_KEY; also exported under the
+      # provider's standard env name (see CLINE_PROVIDER) as convenience.
       CLINE_API_KEY: ""
       CLINE_PROVIDER: anthropic
       CLINE_MODEL: ""
