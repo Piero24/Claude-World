@@ -336,7 +336,7 @@ if [ ! -f "$CLAUDE_SETTINGS" ]; then
       "Bash(sudo rm -rf /etc:*)",
       "Bash(ulimit -u 0:*)",
       "Bash(> /dev/sda:*)",
-      "Bash(dd if=* of=/dev/:*)",
+      "Bash(dd if=* of=/dev/*)",
       "Bash(mkfs:*)",
       "Bash(gh repo delete:*)"
     ]
