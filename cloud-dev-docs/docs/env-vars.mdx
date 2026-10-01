@@ -6,7 +6,7 @@ sidebar_position: 8
 
 All configurable environment variables live in `compose.yaml` under the **dev** service. The init script writes them into `/config` on every boot, so they take effect immediately.
 
-`ANTHROPIC_AUTH_TOKEN` is the only value you must provide: without it, Claude Code won't start. Every other variable falls back to the default shown in its table.
+`AGENT_API_KEY` (or the per-agent key below) is the only value you must provide: without it, the agent will prompt for auth on first run. Every other variable falls back to the default shown in its table.
 
 ## How it works
 
@@ -16,6 +16,25 @@ compose.yaml          init.sh              /config/.bashrc
 ```
 
 Edit `compose.yaml`, recreate the container, done.
+
+## Agent Selector
+
+| Env var | Default | What it does |
+|---------|---------|---------------|
+| `AGENT` | `claude` | Which coding agent to install and auto-launch: `claude` or `codex` |
+| `AGENT_API_KEY` | *(empty)* | Generic API key, mapped to the selected agent. Per-agent keys take precedence if set |
+| `AGENT_MODEL` | *(empty)* | Generic model override for the selected agent. Leave empty for the agent default |
+| `AGENT_BASE_URL` | *(empty)* | Generic base URL override (used by Claude Code) |
+
+**Codex example:**
+
+```yaml
+AGENT: codex
+AGENT_API_KEY: sk-...   # your OpenAI API key
+AGENT_MODEL: gpt-5      # optional, leave empty for Codex default
+```
+
+Or use the per-agent key instead of the generic one (`OPENAI_API_KEY: sk-...` for Codex, `ANTHROPIC_AUTH_TOKEN` for Claude).
 
 ## Claude Code / API
 
@@ -104,23 +123,23 @@ These variables are **not** set in `compose.yaml`. They are passed at connection
 
 | Env var | Default | What it does |
 |---------|---------|--------------|
-| `NO_CLAUDE` | *(unset)* | Set to `1` to skip Claude auto-launch and get a plain shell |
+| `NO_AGENT` | *(unset)* | Set to `1` to skip agent auto-launch and get a plain shell (`NO_CLAUDE=1` still works as an alias) |
 | `TMUX_AUTO` | *(unset)* | Set to `1` to auto-attach a persistent tmux session on login |
 | `TMUX_TIMEOUT` | *(unset)* | Hours before a detached tmux session is auto-killed (`-1` = never, `0` = on detach, `N` = after N hours) |
 
-### Claude auto-launch
+### Agent auto-launch
 
-Claude launches automatically on every login (both SSH and web terminal). You land in `/workplace` with Claude ready. Exiting Claude (`/exit` or `Ctrl+D`) returns you to a normal shell prompt.
+The selected agent (`AGENT`) launches automatically on every login (both SSH and web terminal). You land in `/workplace` with the agent ready. Exiting the agent (`/exit` or `Ctrl+D`) returns you to a normal shell prompt.
 
 To skip the auto-launch:
 
 ```bash
-NO_CLAUDE=1 ssh abc@<server> -p 2222    # → plain shell, no Claude
+NO_AGENT=1 ssh abc@<server> -p 2222    # → plain shell, no agent
 ```
 
 ### Persistent sessions with tmux
 
-Set `TMUX_AUTO=1` on your SSH client (e.g. Termius environment variables) to wrap every session in tmux. When you disconnect, tmux keeps running. When you reconnect, you reattach to the same session with Claude still there.
+Set `TMUX_AUTO=1` on your SSH client (e.g. Termius environment variables) to wrap every session in tmux. When you disconnect, tmux keeps running. When you reconnect, you reattach to the same session with the agent still there.
 
 ```bash
 # In Termius: set TMUX_AUTO=1 in the host's environment variables
@@ -134,20 +153,21 @@ See [Daily Workflow](./daily-workflow) for full tmux usage.
 
 ## Webhook Notifications
 
-When Claude Code finishes responding and waits for input (60+ seconds idle), a webhook can fire if no one is connected to the container. This is useful for long-running tasks: start Claude inside tmux, disconnect, and get notified when Claude is ready for your next prompt.
+When the agent finishes responding and waits for input (60+ seconds idle), a webhook can fire if no one is connected to the container. This is useful for long-running tasks: start the agent inside tmux, disconnect, and get notified when the agent is ready for your next prompt.
 
-The feature uses Claude Code's built-in `idle_prompt` Notification hook. No external daemon or polling is required.
+Claude uses its built-in `idle_prompt` Notification hook (precise). Other agents (e.g. Codex) use a generic tmux-silence watcher. No extra setup required.
 
 | Env var | Default | What it does |
 |---------|---------|---------------|
-| `CLAUDE_WEBHOOK_URL` | *(empty)* | Webhook endpoint URL. Leave empty to disable. Receives a JSON POST when Claude goes idle with no active connections |
-| `CLAUDE_WEBHOOK_IDLE` | `60` | Seconds of terminal silence before Claude is considered idle (minimum 60, matching Claude Code's hook timing) |
+| `AGENT_WEBHOOK_URL` | *(empty)* | Webhook endpoint URL. Leave empty to disable. Receives a JSON POST when the agent goes idle with no active connections (`CLAUDE_WEBHOOK_URL` still works as an alias) |
+| `AGENT_WEBHOOK_IDLE` | `60` | Seconds of terminal silence before the agent is considered idle (minimum 60) |
 
 ### Webhook payload
 
 ```json
 {
   "event": "claude_idle",
+  "agent": "claude",
   "timestamp": "2026-07-24T15:30:00Z",
   "hostname": "claude-world",
   "session_id": "35e6a910-...",
@@ -160,18 +180,18 @@ The feature uses Claude Code's built-in `idle_prompt` Notification hook. No exte
 | `event` | Fixed value `"claude_idle"` |
 | `timestamp` | UTC ISO 8601 timestamp |
 | `hostname` | Container hostname |
-| `session_id` | Claude Code session ID that triggered the hook |
+| `session_id` | Claude session ID that triggered the hook (or tmux pane for the generic watcher) |
 | `last_output` | Last text message from Claude (up to 2000 characters) |
 
 ### How it works
 
-1. You connect via SSH or web terminal, Claude auto-launches
-2. You give Claude a task, it starts processing
-3. You disconnect (tmux keeps Claude running if `TMUX_AUTO=1`)
-4. Claude finishes the task and waits for input
-5. After 60 seconds of idle, Claude Code fires the `idle_prompt` hook
-6. The hook checks `who` for active connections
-7. If no one is connected, it sends the webhook with Claude's last output
+1. You connect via SSH or web terminal, the agent auto-launches
+2. You give the agent a task, it starts processing
+3. You disconnect (tmux keeps the agent running if `TMUX_AUTO=1`)
+4. The agent finishes the task and waits for input
+5. After 60 seconds of idle (Claude fires its `idle_prompt` hook; other agents are detected by the tmux-silence watcher)
+6. The sender checks `who` for active connections
+7. If no one is connected, it sends the webhook with the agent's last output
 
 The webhook can point to any HTTP endpoint: Slack webhooks, Discord webhooks, Telegram bots, Zapier, n8n, ntfy, or a custom server.
 

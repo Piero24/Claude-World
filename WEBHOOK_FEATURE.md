@@ -2,7 +2,9 @@
 
 ## Overview
 
-Feature request: when Claude Code finishes responding (goes idle, waiting for user input) and no one is connected to the container (neither via ttyd web terminal nor SSH), send a webhook notification with Claude's last output text.
+Feature request: when the selected agent finishes responding (goes idle, waiting for user input) and no one is connected to the container (neither via ttyd web terminal nor SSH), send a webhook notification with the agent's last output text.
+
+> **Multi-agent update:** `AGENT_WEBHOOK_URL` / `AGENT_WEBHOOK_IDLE` are now canonical (`CLAUDE_WEBHOOK_*` kept as aliases). Claude keeps the native `idle_prompt` hook; other agents (e.g. Codex) use a generic tmux-silence watcher (`agent-idle-watcher.sh`) that posts the same payload with `event: "<agent>_idle"` plus an `agent` field.
 
 **Status**: Implemented on branch `feat/webhook-notification`
 
@@ -217,6 +219,7 @@ curl -s --connect-timeout 10 --max-time 30 \
 ```json
 {
   "event": "claude_idle",
+  "agent": "claude",
   "timestamp": "2026-07-24T15:30:00Z",
   "hostname": "claude-world",
   "session_id": "35e6a910-e088-4f87-bbbf-9bd207e652a6",
@@ -228,8 +231,8 @@ curl -s --connect-timeout 10 --max-time 30 \
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `CLAUDE_WEBHOOK_URL` | *(empty)* | Webhook endpoint URL. Empty = disabled |
-| `CLAUDE_WEBHOOK_IDLE` | `60` | Idle seconds before hook fires (min 60, dictated by Claude Code) |
+| `AGENT_WEBHOOK_URL` (`CLAUDE_WEBHOOK_URL` alias) | *(empty)* | Webhook endpoint URL. Empty = disabled |
+| `AGENT_WEBHOOK_IDLE` (`CLAUDE_WEBHOOK_IDLE` alias) | `60` | Idle seconds before hook fires (min 60, dictated by Claude Code; generic watcher clamps to 60 too) |
 
 ---
 
@@ -237,26 +240,26 @@ curl -s --connect-timeout 10 --max-time 30 \
 
 | Scenario | Behavior |
 |----------|----------|
-| Claude finishes, all users disconnected | Webhook fires with last output |
-| Claude finishes, user still connected (SSH or ttyd) | `who` shows active → no webhook |
+| Agent finishes, all users disconnected | Webhook fires with last output |
+| Agent finishes, user still connected (SSH or ttyd) | `who` shows active → no webhook |
 | User reconnects before hook fires | `who` now shows active → hook runs but exits silently |
-| Claude is idle but user is at shell prompt | `who` shows them → no webhook (correct: someone could type a new prompt) |
-| Multiple Claude sessions, some idle | Each session has its own hook; each checks `who` independently |
-| `CLAUDE_WEBHOOK_URL` not set | Hook script exits immediately, no overhead |
+| Agent is idle but user is at shell prompt | `who` shows them → no webhook (correct: someone could type a new prompt) |
+| Multiple sessions, some idle | Each session/pane is checked independently |
+| `AGENT_WEBHOOK_URL` not set | Hook script / watcher exit immediately, no overhead |
 | Webhook URL unreachable | curl times out after 30s in background, no impact |
-| No transcript file found | `last_output` is empty string, webhook still sends |
+| No transcript file found (Claude) | `last_output` is empty string, webhook still sends |
 
 ---
 
 ## Verification
 
-1. Set `CLAUDE_WEBHOOK_URL=https://webhook.site/test-id` in compose.yaml
+1. Set `AGENT_WEBHOOK_URL=https://webhook.site/test-id` in compose.yaml
 2. Recreate container: `docker compose up -d --force-recreate`
-3. **Test 1 (webhook fires)**: SSH in → give Claude a quick prompt → wait for response → close SSH → wait 60s → check webhook.site
-   - Expected: JSON payload with Claude's last output text
+3. **Test 1 (webhook fires)**: SSH in → give the agent a quick prompt → wait for response → close SSH → wait 60s → check webhook.site
+   - Expected: JSON payload with the agent's last output text (`event: "<agent>_idle"`)
 4. **Test 2 (no webhook, user connected)**: SSH in → give prompt → wait for response → stay connected → wait 60s
    - Expected: no webhook fires
-5. **Test 3 (disabled)**: Set `CLAUDE_WEBHOOK_URL=""` → use normally
+5. **Test 3 (disabled)**: Set `AGENT_WEBHOOK_URL=""` → use normally
    - Expected: no hook activity, normal operation
 
 ---
@@ -271,15 +274,15 @@ curl -s --connect-timeout 10 --max-time 30 \
 
 4. **Hook injection on every boot**: Uses python3 to safely merge the hook config into settings.json, respecting any custom hooks the user has added.
 
-5. **60-second minimum idle**: Dictated by Claude Code's hook timing. Not configurable (the `CLAUDE_WEBHOOK_IDLE` env var is present for documentation but the actual timing is fixed by Claude Code).
+5. **60-second minimum idle**: Dictated by Claude Code's hook timing. Not configurable (the `AGENT_WEBHOOK_IDLE` env var matches it; the generic watcher clamps to 60 too).
 
 ---
 
 ## Backward Compatibility
 
 - Both env vars default to empty/60: feature is fully disabled unless explicitly configured
-- `NO_CLAUDE=1` still works as before
+- `NO_AGENT=1` (`NO_CLAUDE=1` alias) still works as before
 - No wrapper script modifies Claude's execution
 - No background daemons or polling processes
 - Hook injection is idempotent: won't add duplicate hooks
-- The hook script exits immediately if `CLAUDE_WEBHOOK_URL` is empty
+- The hook script exits immediately if `AGENT_WEBHOOK_URL` is empty
