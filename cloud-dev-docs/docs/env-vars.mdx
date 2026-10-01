@@ -21,7 +21,7 @@ Edit `compose.yaml`, recreate the container, done.
 
 | Env var | Default | What it does |
 |---------|---------|---------------|
-| `AGENT` | `claude` | Which coding agent to install and auto-launch: `claude` or `codex` |
+| `AGENT` | `claude` | Which coding agent to install and auto-launch: `claude`, `codex` or `cline` |
 | `AGENT_API_KEY` | *(empty)* | Generic API key, mapped to the selected agent. Per-agent keys take precedence if set |
 | `AGENT_MODEL` | *(empty)* | Generic model override for the selected agent. Leave empty for the agent default |
 | `AGENT_BASE_URL` | *(empty)* | Generic base URL override (Claude Code only; unsupported by Codex) |
@@ -35,7 +35,17 @@ AGENT_API_KEY: sk-...   # your OpenAI API key
 AGENT_MODEL: gpt-5      # optional, leave empty for Codex default
 ```
 
-Or use the per-agent key instead of the generic one (`OPENAI_API_KEY: sk-...` for Codex, `ANTHROPIC_AUTH_TOKEN` for Claude).
+**Cline example:**
+
+```yaml
+AGENT: cline
+AGENT_API_KEY: sk-ant-...  # your provider key (Anthropic by default)
+CLINE_PROVIDER: anthropic  # e.g. anthropic, openai
+```
+
+Then on first login run `cline auth` (interactive, persists in `/config/.cline`). Env keys are convenience only — Cline's `providers.json` is IDE-managed, so headless API-key-only setup is best-effort. Per-run flags also work: `cline -P anthropic -m <model> -k <key> "task"`.
+
+Or use the per-agent key instead of the generic one (`OPENAI_API_KEY: sk-...` for Codex, `ANTHROPIC_AUTH_TOKEN` for Claude, `CLINE_API_KEY` for Cline).
 
 ## Claude Code / API
 

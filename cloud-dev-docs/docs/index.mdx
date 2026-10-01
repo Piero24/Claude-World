@@ -8,7 +8,7 @@ A single-container cloud development environment with web terminal and SSH, ever
 
 ## What You Get
 
-- **Agent auto-launches on connect**: open a web terminal or SSH in and your coding agent is ready in `/workplace`, no setup needed (pick it with `AGENT: claude | codex`)
+- **Agent auto-launches on connect**: open a web terminal or SSH in and your coding agent is ready in `/workplace`, no setup needed (pick it with `AGENT: claude | codex | cline`)
 - **Web terminal in your browser**: full bash shell via ttyd, password-protected, from any device
 - **SSH access**: connect from local devices like PC, Mac, or iPhone
 - **Persistent tmux sessions**: your work survives disconnects and app switches, especially useful on mobile
@@ -23,7 +23,7 @@ Set `NO_AGENT=1` to skip the auto-launch: `NO_AGENT=1 ssh abc@<server> -p 2222`
 Claude World is designed around two core ideas: providing an isolated sandbox for agentic coding and enabling a remote, developer-first environment.
 
 ### A Sandbox for Agentic Coding
-Agentic tools like Claude Code or Codex can run terminal commands, write scripts, and edit files automatically. Giving them direct access to your primary system carries risks. Claude World solves this by creating a dedicated, safe environment:
+Agentic tools like Claude Code, Codex or Cline can run terminal commands, write scripts, and edit files automatically. Giving them direct access to your primary system carries risks. Claude World solves this by creating a dedicated, safe environment:
 - **Complete isolation**: The agent executes instructions inside a Docker container, keeping your host system completely untouched.
 - **Worry-free operation**: You can let the agent install dependencies, run scripts, and configure system tools without fearing accidental system modifications.
 - **Easy environment recovery**: If the agent misconfigures a tool or breaks a package, you can simply recreate the container to start fresh, while your actual project code remains untouched in the mounted workspace.
@@ -78,7 +78,7 @@ Edit `compose.yaml`, recreate the container, changes take effect on next boot.
 | Tool | Installed by | Persists? |
 |------|-------------|-----------|
 | nvm + Node LTS | Init script | ✅ `/config/.nvm` |
-| Selected agent CLI (Claude Code / Codex) | Init script (npm global) | ✅ `/config/.npm-global` |
+| Selected agent CLI (Claude Code / Codex / Cline) | Init script (npm global) | ✅ `/config/.npm-global` |
 | Python 3 + pip | Init script (apt) | ❌ Reinstalled each boot |
 | Java (default-jdk) | Init script (apt) | ❌ Reinstalled each boot |
 | Docker (DinD) | Init script (apt + internal daemon) | ❌ Reinstalled each boot |
