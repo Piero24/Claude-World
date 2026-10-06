@@ -2,7 +2,7 @@
 # ================================================================
 # Claude World — Container init script
 # Runs on every container boot (linuxserver cont-init.d hook)
-# Installs system packages + SSH + ttyd + nvm + Node + Claude Code
+# Installs system packages + SSH + ttyd + nvm + Node + agent CLI
 # Forces all package managers to install into /config (persistent)
 # ================================================================
 
@@ -45,6 +45,59 @@ add_line() {
     fi
     echo "$line" >> "$file"
 }
+
+# ---- Agent selector (claude | codex) ----
+# Which coding agent to install and auto-launch. Default: claude (back-compat).
+# AGENT is canonical; AGENT_CLI kept as back-compat alias.
+AGENT="${AGENT:-${AGENT_CLI:-claude}}"
+case "$AGENT" in
+    claude|codex)
+        ;;
+    *)
+        echo "[claude-world] WARNING: Unknown AGENT='$AGENT' — falling back to 'claude'."
+        echo "[claude-world] Valid options: claude | codex"
+        AGENT="claude"
+        ;;
+esac
+if [ "$AGENT" = "codex" ]; then
+    AGENT_BIN="codex"
+else
+    AGENT_BIN="claude"
+fi
+echo "[claude-world] Agent: '$AGENT' (binary: '$AGENT_BIN')"
+
+# ---- Generic BYOK resolution ----
+# AGENT_API_KEY / AGENT_MODEL / AGENT_BASE_URL are canonical.
+# Back-compat aliases: AI_API_KEY, AI_MODEL, AI_BASE_URL, AGENT_CLI.
+# Per-agent keys take precedence; generic AGENT_* vars are the fallback.
+# Empty string and CHANGE_ME_* placeholders both count as "not set".
+_resolve_key() {
+    local specific="$1" generic="$2"
+    case "$specific" in
+        ""|CHANGE_ME_*) echo "$generic" ;;
+        *) echo "$specific" ;;
+    esac
+}
+_GENERIC_API_KEY="${AGENT_API_KEY:-${AI_API_KEY:-}}"
+_GENERIC_MODEL="${AGENT_MODEL:-${AI_MODEL:-}}"
+_GENERIC_BASE_URL="${AGENT_BASE_URL:-${AI_BASE_URL:-}}"
+# Generic key only maps to the SELECTED agent — this prevents an OpenAI key
+# from leaking into ANTHROPIC_AUTH_TOKEN (and vice versa) when switching.
+if [ "$AGENT" = "claude" ]; then _AGENT_SCOPED_KEY="${_GENERIC_API_KEY:-}"; else _AGENT_SCOPED_KEY=""; fi
+if [ "$AGENT" = "codex" ]; then _CODEX_SCOPED_KEY="${_GENERIC_API_KEY:-}"; else _CODEX_SCOPED_KEY=""; fi
+EFFECTIVE_ANTHROPIC_AUTH_TOKEN="$(_resolve_key "${ANTHROPIC_AUTH_TOKEN:-}" "${_AGENT_SCOPED_KEY:-}")"
+EFFECTIVE_OPENAI_API_KEY="$(_resolve_key "${OPENAI_API_KEY:-}" "${_CODEX_SCOPED_KEY:-}")"
+if [ "$AGENT" = "claude" ]; then _AGENT_SCOPED_BASE="${_GENERIC_BASE_URL:-}"; else _AGENT_SCOPED_BASE=""; fi
+if [ "$AGENT" = "codex" ]; then _CODEX_SCOPED_MODEL="${_GENERIC_MODEL:-}"; else _CODEX_SCOPED_MODEL=""; fi
+EFFECTIVE_ANTHROPIC_BASE_URL="${ANTHROPIC_BASE_URL:-${_AGENT_SCOPED_BASE:-}}"
+EFFECTIVE_CODEX_MODEL="${CODEX_MODEL:-${_CODEX_SCOPED_MODEL:-}}"
+# Warn if AGENT_BASE_URL is set but AGENT=codex (unsupported — silently ignored)
+if [ "$AGENT" = "codex" ] && [ -n "${_GENERIC_BASE_URL:-}" ]; then
+    echo "[claude-world] WARNING: AGENT_BASE_URL is set but AGENT=codex — Codex does not support custom base URLs. The value will be ignored."
+fi
+# Webhook: AGENT_* is canonical, CLAUDE_* kept as back-compat alias.
+EFFECTIVE_WEBHOOK_URL="${AGENT_WEBHOOK_URL:-${CLAUDE_WEBHOOK_URL:-}}"
+EFFECTIVE_WEBHOOK_IDLE="${AGENT_WEBHOOK_IDLE:-${CLAUDE_WEBHOOK_IDLE:-60}}"
 
 # ---- System packages (skips if already installed — fast) ----
 REQUIRED_PACKAGES=(
@@ -191,7 +244,7 @@ fi
 # ---- npm global prefix → /config (env var, not .npmrc — avoids nvm conflict) ----
 su - "$USER" -c 'export HOME=/config && mkdir -p ~/.npm-global'
 
-# ---- Claude Code ----
+# ---- Claude Code (only when AGENT=claude) ----
 # PINNED to 2.1.207: versions 2.1.214+ break the DeepSeek flash classifier
 # (auto-mode safety checks fail with "deepseek-v4-flash[1m] is temporarily unavailable").
 # To restore latest:
@@ -200,21 +253,56 @@ su - "$USER" -c 'export HOME=/config && mkdir -p ~/.npm-global'
 #      su - "$USER" -c '... npm install -g @anthropic-ai/claude-code'
 #   3. Remove "export ANTHROPIC_CLI_NO_UPDATE_CHECK=1" from the shell config section below.
 #   4. Rebuild the container.
-CLAUDE_CODE_VERSION="2.1.207"
-if [ -d /config/.nvm ]; then
-    INSTALLED_VERSION=$(su - "$USER" -c 'export HOME=/config && export NVM_DIR="/config/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && claude --version 2>/dev/null | grep -oE "[0-9]+\.[0-9]+\.[0-9]+" | head -1 || echo "none"')
-    if [ "$INSTALLED_VERSION" != "$CLAUDE_CODE_VERSION" ]; then
-        echo "[claude-world] Installing Claude Code ${CLAUDE_CODE_VERSION} (found: ${INSTALLED_VERSION})..."
-        # Original (latest version): npm install -g @anthropic-ai/claude-code
-        # npm uninstall/install alone won't downgrade (cached) — nuke first
-        su - "$USER" -c 'export HOME=/config && export NVM_DIR="/config/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && npm uninstall -g @anthropic-ai/claude-code 2>/dev/null; rm -rf "$(dirname "$(npm root -g)")/lib/node_modules/@anthropic-ai/claude-code" 2>/dev/null; npm cache clean --force 2>/dev/null; npm install -g @anthropic-ai/claude-code@'"${CLAUDE_CODE_VERSION}"
-        echo "[claude-world] Claude Code ${CLAUDE_CODE_VERSION} installed."
-    else
-        echo "[claude-world] Claude Code ${CLAUDE_CODE_VERSION} already installed, skipping."
+install_claude() {
+    CLAUDE_CODE_VERSION="2.1.207"
+    if [ -d /config/.nvm ]; then
+        INSTALLED_VERSION=$(su - "$USER" -c 'export HOME=/config && export NVM_DIR="/config/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && claude --version 2>/dev/null | grep -oE "[0-9]+\.[0-9]+\.[0-9]+" | head -1 || echo "none"')
+        if [ "$INSTALLED_VERSION" != "$CLAUDE_CODE_VERSION" ]; then
+            echo "[claude-world] Installing Claude Code ${CLAUDE_CODE_VERSION} (found: ${INSTALLED_VERSION})..."
+            # Original (latest version): npm install -g @anthropic-ai/claude-code
+            # npm uninstall/install alone won't downgrade (cached) — nuke first
+            su - "$USER" -c 'export HOME=/config && export NVM_DIR="/config/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && npm uninstall -g @anthropic-ai/claude-code 2>/dev/null; rm -rf "$(dirname "$(npm root -g)")/lib/node_modules/@anthropic-ai/claude-code" 2>/dev/null; npm cache clean --force 2>/dev/null; npm install -g @anthropic-ai/claude-code@'"${CLAUDE_CODE_VERSION}"
+            echo "[claude-world] Claude Code ${CLAUDE_CODE_VERSION} installed."
+        else
+            echo "[claude-world] Claude Code ${CLAUDE_CODE_VERSION} already installed, skipping."
+        fi
     fi
-fi
+}
+
+# ---- OpenAI Codex (only when AGENT=codex) ----
+# Installed via npm (binary: codex). API-key auth only — no OAuth login headless.
+# Pinned like Claude Code to prevent behavior changes between rebuilds.
+CODEX_CLI_VERSION="${CODEX_VERSION:-0.160.1}"
+install_codex() {
+    if [ -d /config/.nvm ]; then
+        INSTALLED_CODEX=$(su - "$USER" -c 'export HOME=/config && export NVM_DIR="/config/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && codex --version 2>/dev/null | grep -oE "[0-9]+\.[0-9]+\.[0-9]+" | head -1 || echo "none"')
+        if [ "$CODEX_CLI_VERSION" = "latest" ]; then
+            if ! su - "$USER" -c 'export HOME=/config && export NVM_DIR="/config/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && command -v codex >/dev/null 2>&1'; then
+                echo "[claude-world] Installing Codex CLI latest (found: ${INSTALLED_CODEX})..."
+                su - "$USER" -c 'export HOME=/config && export NVM_DIR="/config/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && npm install -g @openai/codex'
+                echo "[claude-world] Codex CLI installed."
+            else
+                echo "[claude-world] Codex CLI already installed (${INSTALLED_CODEX}), skipping."
+            fi
+        else
+            if [ "$INSTALLED_CODEX" != "$CODEX_CLI_VERSION" ]; then
+                echo "[claude-world] Installing Codex CLI ${CODEX_CLI_VERSION} (found: ${INSTALLED_CODEX})..."
+                su - "$USER" -c 'export HOME=/config && export NVM_DIR="/config/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && npm uninstall -g @openai/codex 2>/dev/null; rm -rf "$(dirname "$(npm root -g)")/lib/node_modules/@openai/codex" 2>/dev/null; npm cache clean --force 2>/dev/null; npm install -g @openai/codex@'"${CODEX_CLI_VERSION}"
+                echo "[claude-world] Codex CLI ${CODEX_CLI_VERSION} installed."
+            else
+                echo "[claude-world] Codex CLI ${CODEX_CLI_VERSION} already installed, skipping."
+            fi
+        fi
+    fi
+}
+
+case "$AGENT" in
+    claude) install_claude ;;
+    codex) install_codex ;;
+esac
 
 # Disable Claude Code auto-updater (keep pinned version — remove when restoring latest)
+# Harmless when AGENT=codex (kept for users switching back to claude).
 add_line 'export ANTHROPIC_CLI_NO_UPDATE_CHECK=1' /config/.bashrc
 add_line 'export ANTHROPIC_CLI_NO_UPDATE_CHECK=1' /config/.zshrc
 
@@ -236,33 +324,73 @@ if [ -f ~/.bashrc ]; then
 fi
 BASH_PROFILE
 
-# ---- Claude Code API & Session env vars (from Compose env) ----
-# Written fresh on every boot — edit compose.yaml to change values
+# ---- Agent API & Session env vars (from Compose env) ----
+# Written fresh on every boot — edit compose.yaml to change values.
+# BYOK: per-agent keys win, generic AGENT_* vars are the fallback (resolved above).
 for dsrcfile in /config/.bashrc /config/.zshrc; do
+    sed -i '/^# >>> Agent CLI/,/^# <<< Agent CLI/d' "$dsrcfile" 2>/dev/null
+    sed -i '/^# >>> Agent/,/^# <<< Agent/d' "$dsrcfile" 2>/dev/null
     sed -i '/^# >>> Claude Code/,/^# <<< Claude Code/d' "$dsrcfile" 2>/dev/null
-    cat >> "$dsrcfile" << CLAUDECODE
-# >>> Claude Code (set from Compose env — edit compose.yaml to change)
-$( [ -n "${ANTHROPIC_BASE_URL}" ] && echo "export ANTHROPIC_BASE_URL=${ANTHROPIC_BASE_URL}" )
-export ANTHROPIC_AUTH_TOKEN=${ANTHROPIC_AUTH_TOKEN:-CHANGE_ME_ANTHROPIC_KEY}
+    cat >> "$dsrcfile" << AGENTENV
+# >>> Agent (set from Compose env — edit compose.yaml to change)
+export AGENT=${AGENT:-claude}
+export AGENT_BIN=${AGENT_BIN:-claude}
+# Back-compat aliases
+export AGENT_CLI=${AGENT:-claude}
+export NO_AGENT=${NO_AGENT:-}
+$( [ -n "${EFFECTIVE_ANTHROPIC_BASE_URL}" ] && echo "export ANTHROPIC_BASE_URL=${EFFECTIVE_ANTHROPIC_BASE_URL}" )
+export ANTHROPIC_AUTH_TOKEN=${EFFECTIVE_ANTHROPIC_AUTH_TOKEN:-CHANGE_ME_ANTHROPIC_KEY}
 export ANTHROPIC_MODEL=${ANTHROPIC_MODEL:-claude-opus-4-8}
 export ANTHROPIC_DEFAULT_OPUS_MODEL=${ANTHROPIC_DEFAULT_OPUS_MODEL:-claude-opus-4-8}
 export ANTHROPIC_DEFAULT_SONNET_MODEL=${ANTHROPIC_DEFAULT_SONNET_MODEL:-claude-sonnet-4-6}
 export ANTHROPIC_DEFAULT_HAIKU_MODEL=${ANTHROPIC_DEFAULT_HAIKU_MODEL:-claude-haiku-4-5}
 export CLAUDE_CODE_SUBAGENT_MODEL=${CLAUDE_CODE_SUBAGENT_MODEL:-claude-haiku-4-5}
 export CLAUDE_CODE_EFFORT_LEVEL=${CLAUDE_CODE_EFFORT_LEVEL:-max}
+export OPENAI_API_KEY=${EFFECTIVE_OPENAI_API_KEY:-}
+export CODEX_MODEL=${EFFECTIVE_CODEX_MODEL:-}
 export TMUX_AUTO=${TMUX_AUTO:-0}
 export TMUX_TIMEOUT=${TMUX_TIMEOUT:--1}
 export GITHUB_TOKEN=${GITHUB_TOKEN:-}
 export GH_TOKEN=${GH_TOKEN:-${GITHUB_TOKEN}}
-export CLAUDE_WEBHOOK_URL=${CLAUDE_WEBHOOK_URL:-}
-export CLAUDE_WEBHOOK_IDLE=${CLAUDE_WEBHOOK_IDLE:-60}
-# <<< Claude Code
-CLAUDECODE
+export AGENT_WEBHOOK_URL=${EFFECTIVE_WEBHOOK_URL:-}
+export AGENT_WEBHOOK_IDLE=${EFFECTIVE_WEBHOOK_IDLE:-60}
+export CLAUDE_WEBHOOK_URL=${EFFECTIVE_WEBHOOK_URL:-}
+export CLAUDE_WEBHOOK_IDLE=${EFFECTIVE_WEBHOOK_IDLE:-60}
+# <<< Agent
+AGENTENV
 done
 
-# ---- Claude Code CLAUDE.md (global instructions injected into every prompt) ----
+# ---- Codex config (API-key auth + model) ----
+# Codex reads ~/.codex/config.toml and authenticates via OPENAI_API_KEY.
+# Written fresh on every boot when AGENT=codex — safe to re-run.
+if [ "$AGENT" = "codex" ]; then
+    if [ -n "$EFFECTIVE_OPENAI_API_KEY" ] && [ "$EFFECTIVE_OPENAI_API_KEY" != "CHANGE_ME_OPENAI_KEY" ]; then
+        echo "[claude-world] Configuring Codex API key auth..."
+        mkdir -p /config/.codex
+        if [ -n "$EFFECTIVE_CODEX_MODEL" ]; then
+            # Validate model string to prevent special characters in config
+            if echo "$EFFECTIVE_CODEX_MODEL" | grep -qE '^[A-Za-z0-9._-]+$'; then
+                printf 'model = "%s"\nmodel_provider = "openai"\n' "$EFFECTIVE_CODEX_MODEL" > /config/.codex/config.toml
+                echo "[claude-world] Codex model set to '${EFFECTIVE_CODEX_MODEL}' in /config/.codex/config.toml"
+            else
+                echo "[claude-world] WARNING: CODEX_MODEL contains invalid characters — must match [A-Za-z0-9._-]+. Skipping model override."
+                [ -f /config/.codex/config.toml ] || printf 'model_provider = "openai"\n' > /config/.codex/config.toml
+            fi
+        else
+            # Ensure a config exists so Codex skips onboarding but keeps its default model.
+            [ -f /config/.codex/config.toml ] || printf 'model_provider = "openai"\n' > /config/.codex/config.toml
+        fi
+        chown -R "$USER:$USER" /config/.codex
+    else
+        echo "[claude-world] WARNING: No OpenAI key found (OPENAI_API_KEY or AGENT_API_KEY) — Codex will prompt for auth on first run."
+    fi
+fi
+
+# ---- Claude Code CLAUDE.md (only when AGENT=claude) ----
+# Global instructions injected into every prompt.
 # Written on first boot ONLY — edit /config/.claude/CLAUDE.md to customize.
 # To force regeneration, delete the file and restart the container.
+if [ "$AGENT" = "claude" ]; then
 CLAUDE_MD="/config/.claude/CLAUDE.md"
 if [ ! -f "$CLAUDE_MD" ]; then
     echo "[claude-world] Creating Claude Code CLAUDE.md with global instructions..."
@@ -307,10 +435,12 @@ CLAUDE_MD_EOF
 else
     echo "[claude-world] CLAUDE.md already exists, skipping."
 fi
+fi # end AGENT=claude gate for CLAUDE.md
 
-# ---- Claude Code settings.json (permissions + autonomy) ----
+# ---- Claude Code settings.json (only when AGENT=claude: permissions + autonomy) ----
 # Written on first boot ONLY — edit /config/.claude/settings.json to customize.
 # To force regeneration, delete the file and restart the container.
+if [ "$AGENT" = "claude" ]; then
 CLAUDE_SETTINGS="/config/.claude/settings.json"
 if [ ! -f "$CLAUDE_SETTINGS" ]; then
     echo "[claude-world] Creating Claude Code settings.json with pre-approved permissions..."
@@ -364,7 +494,9 @@ fi
 
 # ---- Ensure idle_prompt webhook hook is configured in settings.json ----
 # Runs every boot (not just first) so existing installations get the hook too.
-if [ -n "$CLAUDE_WEBHOOK_URL" ] && [ "$CLAUDE_WEBHOOK_URL" != "CHANGE_ME_WEBHOOK_URL" ]; then
+# Only for AGENT=claude (native idle_prompt hook). AGENT_* is canonical,
+# CLAUDE_* kept as back-compat alias.
+if [ "$AGENT" = "claude" ] && [ -n "$EFFECTIVE_WEBHOOK_URL" ] && [ "$EFFECTIVE_WEBHOOK_URL" != "CHANGE_ME_WEBHOOK_URL" ]; then
     echo "[claude-world] Configuring idle_prompt webhook hook..."
     python3 -c "
 import json, os
@@ -401,20 +533,23 @@ else:
     print('[claude-world] idle_prompt webhook hook already configured')
 "
 fi
+fi # end AGENT=claude gate for settings.json + hook injection
 
-# ---- Claude idle webhook sender ----
-# Called by the idle_prompt Notification hook in settings.json.
+# ---- Agent idle webhook sender ----
+# Called by the idle_prompt Notification hook in settings.json (AGENT=claude).
 # Reads session info from stdin (JSON from Claude Code hook system).
+# AGENT_WEBHOOK_URL is canonical; CLAUDE_WEBHOOK_URL kept as back-compat alias.
 cat > /usr/local/bin/claude-idle-webhook.sh << 'IDLEWEBHOOK'
 #!/bin/bash
 # ================================================================
-# claude-idle-webhook.sh — Send webhook when Claude goes idle
+# claude-idle-webhook.sh — Send webhook when the agent goes idle
 # Called by Claude Code's idle_prompt Notification hook.
 # Receives JSON on stdin: {session_id, transcript_path, cwd, ...}
 # ================================================================
 
-CLAUDE_WEBHOOK_URL="${CLAUDE_WEBHOOK_URL:-}"
-[ -z "$CLAUDE_WEBHOOK_URL" ] && exit 0
+WEBHOOK_URL="${AGENT_WEBHOOK_URL:-${CLAUDE_WEBHOOK_URL:-}}"
+[ -z "$WEBHOOK_URL" ] && exit 0
+AGENT_NAME="${AGENT:-${AGENT_CLI:-claude}}"
 
 # Read hook metadata from stdin (sent by Claude Code)
 HOOK_DATA=$(cat 2>/dev/null)
@@ -422,9 +557,13 @@ SESSION_ID=$(echo "$HOOK_DATA" | python3 -c "import sys,json; print(json.loads(s
 TRANSCRIPT=$(echo "$HOOK_DATA" | python3 -c "import sys,json; print(json.loads(sys.stdin.read()).get('transcript_path',''))" 2>/dev/null)
 
 # ---- Check if anyone is connected ----
-# 'who' shows active login sessions (SSH and ttyd). If count is 0,
-# no one is watching the terminal.
-ACTIVE=$(who 2>/dev/null | wc -l)
+# If tmux is running, use tmux list-clients (ttyd and tmux disconnects drop client count to 0).
+# If tmux is not running (e.g. TMUX_AUTO=0), fall back to who for SSH sessions.
+if tmux list-sessions >/dev/null 2>&1; then
+    ACTIVE=$(tmux list-clients 2>/dev/null | wc -l)
+else
+    ACTIVE=$(who 2>/dev/null | wc -l)
+fi
 if [ "$ACTIVE" -gt 0 ]; then
     exit 0
 fi
@@ -466,21 +605,125 @@ ESCAPED_OUTPUT=$(echo "$LAST_OUTPUT" | python3 -c "
 import sys, json
 print(json.dumps(sys.stdin.read()))
 " 2>/dev/null)
+# Guard against empty ESCAPED_OUTPUT (python3 missing/failed) to avoid malformed JSON
+[ -z "$ESCAPED_OUTPUT" ] && ESCAPED_OUTPUT='""'
 
 curl -s --connect-timeout 10 --max-time 30 \
-    -X POST "$CLAUDE_WEBHOOK_URL" \
+    -X POST "$WEBHOOK_URL" \
     -H "Content-Type: application/json" \
-    -d "{\"event\":\"claude_idle\",\"timestamp\":\"$TS\",\"hostname\":\"$HOST\",\"session_id\":\"$SESSION_ID\",\"last_output\":$ESCAPED_OUTPUT}" \
+    -d "{\"event\":\"${AGENT_NAME}_idle\",\"agent\":\"$AGENT_NAME\",\"timestamp\":\"$TS\",\"hostname\":\"$HOST\",\"session_id\":\"$SESSION_ID\",\"last_output\":$ESCAPED_OUTPUT}" \
     > /dev/null 2>&1 &
 
 exit 0
 IDLEWEBHOOK
 chmod +x /usr/local/bin/claude-idle-webhook.sh
-echo "[claude-world] Claude idle webhook sender created at /usr/local/bin/claude-idle-webhook.sh"
+echo "[claude-world] Agent idle webhook sender created at /usr/local/bin/claude-idle-webhook.sh"
 
-# ---- cleanup-merged skill ----
+# ---- Generic agent idle watcher (AGENT != claude only) ----
+# Fallback for agents without a native idle hook: watches the agent's tmux pane
+# for output silence. When the pane is silent for AGENT_WEBHOOK_IDLE seconds and
+# nobody is connected, sends one webhook per idle episode.
+# Claude uses its own native idle_prompt hook — no watcher needed.
+cat > /usr/local/bin/agent-idle-watcher.sh << 'AGENTWATCHER'
+#!/bin/bash
+# ================================================================
+# agent-idle-watcher.sh — Generic idle webhook for non-Claude agents
+# Usage: agent-idle-watcher.sh [poll_seconds]
+# Env: AGENT, AGENT_BIN, AGENT_WEBHOOK_URL, AGENT_WEBHOOK_IDLE
+# ================================================================
+
+WEBHOOK_URL="${AGENT_WEBHOOK_URL:-${CLAUDE_WEBHOOK_URL:-}}"
+[ -z "$WEBHOOK_URL" ] && exit 0
+AGENT_NAME="${AGENT:-${AGENT_CLI:-claude}}"
+AGENT_BINARY="${AGENT_BIN:-$AGENT_NAME}"
+IDLE_SECS="${AGENT_WEBHOOK_IDLE:-${CLAUDE_WEBHOOK_IDLE:-60}}"
+POLL="${1:-15}"
+# Validate IDLE_SECS is numeric, default to 60 if not
+case "$IDLE_SECS" in ''|*[!0-9]*) IDLE_SECS=60;; esac
+# Never fire faster than 60s (matches Claude native hook timing).
+[ "$IDLE_SECS" -lt 60 ] && IDLE_SECS=60
+
+declare -A LAST_HASH
+declare -A LAST_CHANGE
+declare -A NOTIFIED
+
+hash_pane() {
+    tmux capture-pane -p -t "$1" 2>/dev/null | tail -n 50 | md5sum | cut -d' ' -f1
+}
+
+# Check if a pane is running the agent binary (by foreground process)
+pane_runs_agent() {
+    local pane="$1"
+    # Fast check: if the pane is at a plain shell prompt, agent is not running
+    local cmd
+    cmd=$(tmux display-message -p -t "$pane" '#{pane_current_command}' 2>/dev/null)
+    case "$cmd" in bash|zsh|sh) return 1;; esac
+
+    local tty
+    tty=$(tmux display-message -p -t "$pane" '#{pane_tty}' 2>/dev/null)
+    [ -z "$tty" ] && return 1
+    local dev_tty="${tty#/dev/}"
+    # Check both comm and args to detect direct binaries, scripts, or node-wrapped CLI tools
+    ps -o comm=,args= -t "$dev_tty" 2>/dev/null | grep -qiE "(^|[ /])${AGENT_BINARY}([ -]|$)"
+}
+
+while true; do
+    sleep "$POLL"
+    # Use tmux list-clients instead of 'who' for accurate connection detection
+    ACTIVE=$(tmux list-clients 2>/dev/null | wc -l)
+    [ "$ACTIVE" -gt 0 ] && continue
+    NOW=$(date +%s)
+    while read -r pane; do
+        # Only watch panes that are actually running the agent binary
+        pane_runs_agent "$pane" || continue
+        H=$(hash_pane "$pane")
+        [ -z "$H" ] && continue
+        if [ "${LAST_HASH[$pane]:-}" != "$H" ]; then
+            LAST_HASH[$pane]="$H"
+            LAST_CHANGE[$pane]="$NOW"
+            NOTIFIED[$pane]=0
+        else
+            # On first discovery (no prior LAST_CHANGE), seed with NOW to avoid
+            # instant-firing after a watcher restart on already-idle panes.
+            if [ -z "${LAST_CHANGE[$pane]:-}" ]; then
+                LAST_CHANGE[$pane]="$NOW"
+                NOTIFIED[$pane]=0
+                continue
+            fi
+            SINCE=$(( NOW - ${LAST_CHANGE[$pane]} ))
+            if [ "$SINCE" -ge "$IDLE_SECS" ] && [ "${NOTIFIED[$pane]:-0}" != "1" ]; then
+                NOTIFIED[$pane]=1
+                OUTPUT=$(tmux capture-pane -p -t "$pane" 2>/dev/null | tail -n 50)
+                ESCAPED=$(printf '%s' "$OUTPUT" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read()))" 2>/dev/null)
+                # Guard against empty ESCAPED (python3 missing/failed)
+                [ -z "$ESCAPED" ] && ESCAPED='""'
+                TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+                HOST=$(hostname 2>/dev/null || echo "claude-world")
+                curl -s --connect-timeout 10 --max-time 30 \
+                    -X POST "$WEBHOOK_URL" \
+                    -H "Content-Type: application/json" \
+                    -d "{\"event\":\"${AGENT_NAME}_idle\",\"agent\":\"$AGENT_NAME\",\"timestamp\":\"$TS\",\"hostname\":\"$HOST\",\"session_id\":\"${AGENT_NAME}:${pane}\",\"last_output\":$ESCAPED}" \
+                    > /dev/null 2>&1 &
+            fi
+        fi
+    done < <(tmux list-panes -a -F '#{session_name}:#{window_index}.#{pane_index}' 2>/dev/null)
+done
+AGENTWATCHER
+chmod +x /usr/local/bin/agent-idle-watcher.sh
+echo "[claude-world] Generic agent idle watcher created at /usr/local/bin/agent-idle-watcher.sh"
+
+# Start the generic watcher only for non-Claude agents (Claude uses its native hook).
+if [ "$AGENT" != "claude" ] && [ -n "$EFFECTIVE_WEBHOOK_URL" ] && [ "$EFFECTIVE_WEBHOOK_URL" != "CHANGE_ME_WEBHOOK_URL" ]; then
+    if ! pgrep -f "agent-idle-watcher" >/dev/null 2>&1; then
+        echo "[claude-world] Starting generic agent idle watcher (idle=${EFFECTIVE_WEBHOOK_IDLE}s)..."
+        nohup /usr/local/bin/agent-idle-watcher.sh > /var/log/agent-idle-watcher.log 2>&1 &
+    fi
+fi
+
+# ---- cleanup-merged skill (only when AGENT=claude) ----
 # Written on first boot ONLY — edit /config/.claude/skills/cleanup-merged.md to customize.
 # To force regeneration, delete the file and restart the container.
+if [ "$AGENT" = "claude" ]; then
 CLEANUP_SKILL="/config/.claude/skills/cleanup-merged.md"
 if [ ! -f "$CLEANUP_SKILL" ]; then
     echo "[claude-world] Creating cleanup-merged skill..."
@@ -534,6 +777,7 @@ CLEANUP_SKILL_EOF
 else
     echo "[claude-world] cleanup-merged skill already exists, skipping."
 fi
+fi # end AGENT=claude gate for cleanup-merged skill
 
 # ---- Git / GitHub config (from Compose env) ----
 if [ -n "${GIT_USER_NAME}" ] && [ "${GIT_USER_NAME}" != "CHANGE_ME_GIT_NAME" ]; then
@@ -547,12 +791,12 @@ if [ -n "${GITHUB_TOKEN}" ] && [ "${GITHUB_TOKEN}" != "CHANGE_ME_GITHUB_TOKEN" ]
     echo "[claude-world] Git credential helper configured via gh (uses GITHUB_TOKEN)"
 fi
 
-# ---- Auto-launch: cd + tmux + claude ----
-# Written fresh on every boot (marker-based, same pattern as Claude Code env block).
-# Order: cd /workplace → tmux (if requested) → claude.
+# ---- Auto-launch: cd + tmux + agent ----
+# Written fresh on every boot (marker-based, same pattern as agent env block).
+# Order: cd /workplace → tmux (if requested) → agent binary.
 #   - [ -z "$TMUX" ] prevents tmux-inside-tmux recursion.
-#   - `claude` (not `exec claude`) so exiting Claude returns to a shell prompt.
-#   - NO_CLAUDE=1 skips Claude (e.g. NO_CLAUDE=1 ssh ...).
+#   - `$AGENT_BIN` (not `exec`) so exiting the agent returns to a shell prompt.
+#   - NO_AGENT=1 skips auto-launch (NO_CLAUDE=1 kept as back-compat alias).
 for rcfile in /config/.bashrc /config/.zshrc; do
     # Clean up legacy add_line entries from older init.sh versions
     sed -i '/^cd \/workplace$/d' "$rcfile" 2>/dev/null
@@ -572,11 +816,13 @@ cd /workplace
 if [ "$TMUX_AUTO" = "1" ] && [ -z "$TMUX" ]; then
     exec tmux new-session -A -s main
 fi
-if [ -z "$NO_CLAUDE" ]; then
-    claude
+if [ -z "$NO_AGENT" ] && [ -z "$NO_CLAUDE" ]; then
+    __AGENT_BIN__
 fi
 # <<< Claude World Auto-Launch
 AUTOLAUNCH
+    # Inject the selected agent binary (AGENT_BIN is resolved at boot time)
+    sed -i "s/__AGENT_BIN__/${AGENT_BIN:-claude}/" "$rcfile"
 done
 
 # ---- tmux aliases ----
@@ -639,4 +885,4 @@ if [ -d /workplace ]; then
     chmod 755 /workplace
 fi
 
-echo "[claude-world] Init complete. SSH is running as '$USER'. ttyd on :7681. nvm, Node, Claude Code are ready."
+echo "[claude-world] Init complete. SSH is running as '$USER'. ttyd on :7681. nvm, Node, $AGENT_BIN are ready."

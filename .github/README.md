@@ -28,7 +28,7 @@ curl -fsSL https://raw.githubusercontent.com/Piero24/Claude-World/main/install.s
 | **dev** | `linuxserver/baseimage-ubuntu:noble` | Web terminal (ttyd) + SSH + all dev tools |
 | **beszel-agent** | `henrygd/beszel-agent:latest` | System metrics → your existing Beszel hub |
 
-Pre-installed: nvm + Node LTS, Claude Code, Python 3, Java, Docker CLI, GitHub CLI (gh), build-essential, tmux, zsh.
+Pre-installed: nvm + Node LTS, selected agent CLI (Claude Code / Codex), Python 3, Java, Docker CLI, GitHub CLI (gh), build-essential, tmux, zsh.
 
 ## Architecture
 
@@ -47,7 +47,7 @@ flowchart LR
     Dev --> Workplace
 ```
 
-One container, everything in one place. `/config` is your persistent home: shell config, git identity, nvm, Node, Claude Code, all survive container rebuilds. `/workplace` is your code.
+One container, everything in one place. `/config` is your persistent home: shell config, git identity, nvm, Node, agent CLIs, all survive container rebuilds. `/workplace` is your code.
 
 ## Quickstart
 
@@ -76,13 +76,13 @@ docker compose up -d
 
 | Method | URL / Command | Auth |
 |--------|---------------|------|
-| Web terminal | `http://<server-ip>:7681` | `PASSWORD`, Claude auto-launches |
-| SSH | `ssh abc@<server-ip> -p 2222` | `SUDO_PASSWORD`, Claude auto-launches |
+| Web terminal | `http://<server-ip>:7681` | `PASSWORD`, agent auto-launches |
+| SSH | `ssh abc@<server-ip> -p 2222` | `SUDO_PASSWORD`, agent auto-launches |
 
 ## Key features
 
 - **One container for dev**: web terminal + SSH. No desktop, no separate VS Code
-- **Claude auto-launch**: connect via SSH or web terminal and Claude is ready in `/workplace`. Exit Claude to get a shell prompt
+- **Agent auto-launch**: connect via SSH or web terminal and your agent (Claude or Codex, picked with `AGENT`) is ready in `/workplace`. Exit the agent to get a shell prompt
 - **Monitoring**: Beszel agent feeds system metrics to your existing hub
 - **Web terminal (ttyd)**: full bash shell in your browser, password-protected
 - **SSH access**: connect from local devices like PC, Mac, or iPhone
@@ -96,7 +96,7 @@ docker compose up -d
 | Tool | Installed by | Persists? |
 |------|-------------|-----------|
 | nvm + Node LTS | Init script | ✅ `/config/.nvm` |
-| Claude Code | Init script (npm global) | ✅ `/config/.npm-global` |
+| Selected agent CLI (Claude Code / Codex) | Init script (npm global) | ✅ `/config/.npm-global` |
 | Python 3 + pip | Init script (apt) | ❌ Reinstalled each boot |
 | Java (default-jdk) | Init script (apt) | ❌ Reinstalled each boot |
 | Docker (DinD) | Init script (apt + internal daemon) | ❌ Reinstalled each boot |
@@ -114,7 +114,7 @@ If it lands in `/config`, it persists forever. If it needs `sudo` or `apt`, add 
 |------|---------|
 | [`compose.yaml`](compose.yaml) | Plain Docker Compose (short syntax, relative paths) |
 | [`compose-casaos.yaml`](compose-casaos.yaml) | CasaOS Compose (long syntax, `x-casaos` metadata) |
-| [`init.sh`](init.sh) | Container boot script: SSH, ttyd, nvm, Node, Claude Code |
+| [`init.sh`](init.sh) | Container boot script: SSH, ttyd, nvm, Node, agent CLI |
 | [`install.sh`](install.sh) | Interactive CasaOS installer |
 
 ## Docs

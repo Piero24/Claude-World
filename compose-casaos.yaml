@@ -17,6 +17,16 @@ services:
       SUDO_PASSWORD: CHANGE_ME_SUDO_PASSWORD
       TMUX_AUTO: "0"
       TMUX_TIMEOUT: "-1"
+      # --- Agent Selector ---
+      # Which coding agent to install and auto-launch.
+      # Options: claude | codex
+      AGENT: claude
+      # --- Generic BYOK (Bring Your Own Key) ---
+      # Fill once and init.sh maps it to the selected agent.
+      AGENT_API_KEY: ""
+      AGENT_MODEL: ""
+      # Generic base URL override (Claude Code only; unsupported by Codex).
+      AGENT_BASE_URL: ""
       # --- Claude Code ---
       # Leave empty to use Anthropic directly. Set to a third-party URL if needed.
       ANTHROPIC_BASE_URL: ""
@@ -27,15 +37,21 @@ services:
       ANTHROPIC_DEFAULT_HAIKU_MODEL: claude-haiku-4-5
       CLAUDE_CODE_SUBAGENT_MODEL: claude-haiku-4-5
       CLAUDE_CODE_EFFORT_LEVEL: max
+      # --- OpenAI Codex ---
+      # Optional: falls back to AGENT_API_KEY / AGENT_MODEL if empty.
+      OPENAI_API_KEY: ""
+      CODEX_MODEL: ""
+      # Version pin (defaults to known-good 0.160.1; set to 'latest' to opt out of pinning)
+      CODEX_VERSION: ""
       GIT_USER_NAME: CHANGE_ME_GIT_NAME
       GIT_USER_EMAIL: CHANGE_ME_GIT_EMAIL
       GITHUB_TOKEN: CHANGE_ME_GITHUB_TOKEN
       # --- Webhook Notifications ---
       # Set to a webhook URL (e.g. https://hooks.slack.com/...) to receive
-      # a POST when Claude finishes responding and no one is connected.
-      CLAUDE_WEBHOOK_URL: ""
-      # Seconds of terminal silence before Claude is considered idle (min 60).
-      CLAUDE_WEBHOOK_IDLE: "60"
+      # a POST when the agent finishes responding and no one is connected.
+      AGENT_WEBHOOK_URL: ""
+      # Seconds of terminal silence before the agent is considered idle (min 60).
+      AGENT_WEBHOOK_IDLE: "60"
     x-casaos:
       envs:
         - container: PUID
@@ -65,15 +81,30 @@ services:
         - container: ANTHROPIC_AUTH_TOKEN
           description:
             en_us: "Anthropic API key for Claude Code. Get one at console.anthropic.com."
+        - container: AGENT
+          description:
+            en_us: "Which coding agent to install and auto-launch: claude or codex."
+        - container: AGENT_API_KEY
+          description:
+            en_us: "Generic API key, mapped to the selected agent. Per-agent keys take precedence if set."
+        - container: AGENT_MODEL
+          description:
+            en_us: "Generic model override for the selected agent. Leave empty for the agent default."
+        - container: OPENAI_API_KEY
+          description:
+            en_us: "OpenAI API key for Codex. Falls back to AGENT_API_KEY if empty."
+        - container: CODEX_VERSION
+          description:
+            en_us: "Codex CLI version pin (defaults to 0.160.1; set to 'latest' to opt out of pinning)."
         - container: GITHUB_TOKEN
           description:
             en_us: "GitHub fine-grained PAT (Settings → Developer settings → Personal access tokens)."
-        - container: CLAUDE_WEBHOOK_URL
+        - container: AGENT_WEBHOOK_URL
           description:
-            en_us: "Webhook URL for notifications when Claude finishes responding and no one is connected. Leave empty to disable."
-        - container: CLAUDE_WEBHOOK_IDLE
+            en_us: "Webhook URL for notifications when the agent finishes responding and no one is connected. Leave empty to disable."
+        - container: AGENT_WEBHOOK_IDLE
           description:
-            en_us: "Seconds of terminal silence before Claude is considered idle (minimum 60)."
+            en_us: "Seconds of terminal silence before the agent is considered idle (minimum 60)."
     ports:
       - target: 7681
         published: 7681

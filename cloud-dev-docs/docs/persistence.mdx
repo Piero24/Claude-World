@@ -17,7 +17,7 @@ Everything in `/config` is a Docker volume: it lives on the host and survives `d
 ├── .gitconfig           # Git identity (+ gh credential helper)
 ├── .config/gh/          # GitHub CLI config (if logged in)
 ├── .nvm/                # nvm + Node LTS installations
-├── .npm-global/         # Global npm packages (Claude Code)
+├── .npm-global/         # Global npm packages (selected agent CLI)
 └── .local/              # User-local data
 ```
 
@@ -74,6 +74,6 @@ docker compose up -d --force-recreate
 
 ## Environment variables
 
-Claude Code and Git config are written fresh on every boot from the env vars in `compose.yaml`. Edit `compose.yaml`, recreate the container, and changes take effect.
+The selected agent CLI and Git config are written fresh on every boot from the env vars in `compose.yaml`. Edit `compose.yaml`, recreate the container, and changes take effect.
 
 See [Environment Variables](./env-vars) for the full reference.

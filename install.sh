@@ -48,6 +48,24 @@ echo "  Base path: $BASE_PATH"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
+# ---- Ask which agent to use ----
+echo "Which coding agent should the container install and auto-launch?"
+echo "  1) claude  (Anthropic Claude Code — default)"
+echo "  2) codex   (OpenAI Codex CLI)"
+echo ""
+AGENT_CHOICE="claude"
+read -p "Agent [1]: " AGENT_NUM < /dev/tty
+case "$AGENT_NUM" in
+    2|[cC][oO][dD][eE][xX]) AGENT_CHOICE="codex" ;;
+    ""|1|[cC][lL][aA][uU][dD][eE]) AGENT_CHOICE="claude" ;;
+    *)
+        echo "Unknown option '$AGENT_NUM' — using 'claude'."
+        AGENT_CHOICE="claude"
+        ;;
+esac
+echo "  Agent: $AGENT_CHOICE"
+echo ""
+
 # ---- Create directories ----
 echo "[1/3] Creating directories..."
 mkdir -p "$BASE_PATH"/{config,workplace}
@@ -67,6 +85,13 @@ echo "[3/3] Downloading CasaOS Compose file..."
 curl -fsSL "$GITHUB_RAW/compose-casaos.yaml" -o "$BASE_PATH/compose-casaos.yaml"
 echo "      ✓ compose-casaos.yaml → $BASE_PATH/compose-casaos.yaml"
 
+# ---- Apply agent choice (portable sed: works on GNU + BSD/macOS) ----
+if [ "$AGENT_CHOICE" != "claude" ]; then
+    sed -i.bak "s/^[ ]*AGENT:.*/      AGENT: $AGENT_CHOICE/" "$BASE_PATH/compose-casaos.yaml"
+    rm -f "$BASE_PATH/compose-casaos.yaml.bak"
+    echo "      ✓ AGENT set to '$AGENT_CHOICE' in compose-casaos.yaml"
+fi
+
 # ---- Done ----
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -81,7 +106,11 @@ echo ""
 echo "     Replace (under the dev service):"
 echo "       CHANGE_ME_WEB_PASSWORD   → your ttyd login password"
 echo "       CHANGE_ME_SUDO_PASSWORD  → your sudo/SSH password"
+if [ "$AGENT_CHOICE" = "codex" ]; then
+echo "       OPENAI_API_KEY (or AGENT_API_KEY) → your OpenAI API key"
+else
 echo "       CHANGE_ME_ANTHROPIC_KEY  → your Anthropic API key"
+fi
 echo "       CHANGE_ME_GIT_NAME       → your Git name"
 echo "       CHANGE_ME_GIT_EMAIL      → your Git email"
 echo "       CHANGE_ME_GITHUB_TOKEN   → your GitHub fine-grained PAT"
