@@ -268,7 +268,7 @@ curl -s --connect-timeout 10 --max-time 30 \
 
 1. **Claude Code hooks over external monitoring**: The `idle_prompt` hook is Claude Code's own mechanism for detecting idle state. It's more reliable than external polling of log files or process state.
 
-2. **`who` for connection detection**: Simple, reliable, covers both SSH and ttyd. No need for separate `ss` checks per port.
+2. **`tmux list-clients` with `who` fallback for connection detection**: When tmux is active, `tmux list-clients` accurately detects whether terminals/browsers are currently attached (avoiding false positives from closed ttyd tabs or detached sessions that still register in `utmp`). If tmux is not running, falls back to `who` for direct SSH sessions.
 
 3. **Transcript parsing for last output**: Reads Claude's own transcript file to extract the last assistant text message. More reliable than scraping terminal output with ANSI codes.
 

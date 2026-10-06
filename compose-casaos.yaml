@@ -25,6 +25,7 @@ services:
       # Fill once and init.sh maps it to the selected agent.
       AGENT_API_KEY: ""
       AGENT_MODEL: ""
+      # Generic base URL override (Claude Code only; unsupported by Codex).
       AGENT_BASE_URL: ""
       # --- Claude Code ---
       # Leave empty to use Anthropic directly. Set to a third-party URL if needed.
@@ -40,6 +41,8 @@ services:
       # Optional: falls back to AGENT_API_KEY / AGENT_MODEL if empty.
       OPENAI_API_KEY: ""
       CODEX_MODEL: ""
+      # Version pin (defaults to known-good 0.160.1; set to 'latest' to opt out of pinning)
+      CODEX_VERSION: ""
       GIT_USER_NAME: CHANGE_ME_GIT_NAME
       GIT_USER_EMAIL: CHANGE_ME_GIT_EMAIL
       GITHUB_TOKEN: CHANGE_ME_GITHUB_TOKEN
@@ -90,6 +93,9 @@ services:
         - container: OPENAI_API_KEY
           description:
             en_us: "OpenAI API key for Codex. Falls back to AGENT_API_KEY if empty."
+        - container: CODEX_VERSION
+          description:
+            en_us: "Codex CLI version pin (defaults to 0.160.1; set to 'latest' to opt out of pinning)."
         - container: GITHUB_TOKEN
           description:
             en_us: "GitHub fine-grained PAT (Settings → Developer settings → Personal access tokens)."

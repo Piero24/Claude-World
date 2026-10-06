@@ -24,7 +24,8 @@ Edit `compose.yaml`, recreate the container, done.
 | `AGENT` | `claude` | Which coding agent to install and auto-launch: `claude` or `codex` |
 | `AGENT_API_KEY` | *(empty)* | Generic API key, mapped to the selected agent. Per-agent keys take precedence if set |
 | `AGENT_MODEL` | *(empty)* | Generic model override for the selected agent. Leave empty for the agent default |
-| `AGENT_BASE_URL` | *(empty)* | Generic base URL override (used by Claude Code) |
+| `AGENT_BASE_URL` | *(empty)* | Generic base URL override (Claude Code only; unsupported by Codex) |
+| `CODEX_VERSION` | `0.160.1` | Pinned Codex CLI version. Set to `latest` to opt out of version pinning |
 
 **Codex example:**
 
@@ -177,11 +178,12 @@ Claude uses its built-in `idle_prompt` Notification hook (precise). Other agents
 
 | Field | Description |
 |-------|-------------|
-| `event` | Fixed value `"claude_idle"` |
+| `event` | Event name: `"<agent>_idle"` (e.g. `"claude_idle"` or `"codex_idle"`) |
+| `agent` | Selected agent name (`"claude"` or `"codex"`) |
 | `timestamp` | UTC ISO 8601 timestamp |
 | `hostname` | Container hostname |
-| `session_id` | Claude session ID that triggered the hook (or tmux pane for the generic watcher) |
-| `last_output` | Last text message from Claude (up to 2000 characters) |
+| `session_id` | Claude session ID that triggered the hook, or `"<agent>:<pane>"` for the generic watcher |
+| `last_output` | Last text output from the agent (up to 2000 characters) |
 
 ### How it works
 

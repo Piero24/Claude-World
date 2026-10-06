@@ -26,6 +26,7 @@ services:
       # Per-agent keys below take precedence if set.
       AGENT_API_KEY: ""
       AGENT_MODEL: ""
+      # Generic base URL override (Claude Code only; unsupported by Codex).
       AGENT_BASE_URL: ""
       # --- Claude Code ---
       # Leave empty to use Anthropic directly. Set to https://api.deepseek.com/anthropic
@@ -42,6 +43,8 @@ services:
       # Optional: falls back to AGENT_API_KEY / AGENT_MODEL if empty.
       OPENAI_API_KEY: ""
       CODEX_MODEL: ""
+      # Version pin (defaults to known-good 0.160.1; set to 'latest' to opt out of pinning)
+      CODEX_VERSION: ""
       GIT_USER_NAME: CHANGE_ME_GIT_NAME
       GIT_USER_EMAIL: CHANGE_ME_GIT_EMAIL
       GITHUB_TOKEN: CHANGE_ME_GITHUB_TOKEN
