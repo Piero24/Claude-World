@@ -102,19 +102,57 @@ EFFECTIVE_CLINE_API_KEY="$(_resolve_key "${CLINE_API_KEY:-}" "${_CLINE_SCOPED_KE
 if [ "$AGENT" = "cline" ]; then _CLINE_SCOPED_MODEL="${_GENERIC_MODEL:-}"; else _CLINE_SCOPED_MODEL=""; fi
 EFFECTIVE_CLINE_MODEL="${CLINE_MODEL:-${_CLINE_SCOPED_MODEL:-}}"
 EFFECTIVE_CLINE_PROVIDER="${CLINE_PROVIDER:-anthropic}"
-# Cline convenience: expose its key under the provider's standard env name
-# (in addition to the providers.json pre-seed below).
-# The value is spliced into an UNQUOTED heredoc when writing the shell env
+# Cline convenience: expose primary and secondary provider keys under
+# standard env names (in addition to the providers.json pre-seed below).
+# The values are spliced into an UNQUOTED heredoc when writing the shell env
 # block, so escape \, `, $ (heredoc expansion at write time) and ' (breaks
 # the single-quote wrapping at source time).
 CLINE_STD_KEY_EXPORT=""
 _CLINE_ESCAPED_KEY=""
-if [ "$AGENT" = "cline" ] && [ -n "$EFFECTIVE_CLINE_API_KEY" ]; then
-    _CLINE_ESCAPED_KEY="$(printf '%s' "$EFFECTIVE_CLINE_API_KEY" | sed -e 's/\\/\\\\/g' -e 's/`/\\`/g' -e 's/\$/\\$/g' -e "s/'/'\\\\''/g")"
-    case "${EFFECTIVE_CLINE_PROVIDER:-anthropic}" in
-        openai*|codex*) CLINE_STD_KEY_EXPORT="export OPENAI_API_KEY='${_CLINE_ESCAPED_KEY}'" ;;
-        *) CLINE_STD_KEY_EXPORT="export ANTHROPIC_API_KEY='${_CLINE_ESCAPED_KEY}'" ;;
-    esac
+if [ "$AGENT" = "cline" ]; then
+    if [ -n "$EFFECTIVE_CLINE_API_KEY" ]; then
+        _CLINE_ESCAPED_KEY="$(printf '%s' "$EFFECTIVE_CLINE_API_KEY" | sed -e 's/\\/\\\\/g' -e 's/`/\\`/g' -e 's/\$/\\$/g' -e "s/'/'\\\\''/g")"
+        case "${EFFECTIVE_CLINE_PROVIDER:-anthropic}" in
+            openai*|codex*) CLINE_STD_KEY_EXPORT="export OPENAI_API_KEY='${_CLINE_ESCAPED_KEY}'" ;;
+            openrouter*) CLINE_STD_KEY_EXPORT="export OPENROUTER_API_KEY='${_CLINE_ESCAPED_KEY}'" ;;
+            *) CLINE_STD_KEY_EXPORT="export ANTHROPIC_API_KEY='${_CLINE_ESCAPED_KEY}'" ;;
+        esac
+    fi
+    # Dynamically export secondary providers and standard convenience keys if defined
+    for _idx in $(env | grep -E '^CLINE_PROVIDER_[0-9]+=' | sed -E 's/^CLINE_PROVIDER_([0-9]+)=.*/\1/' | sort -n -u 2>/dev/null); do
+        _p_var="CLINE_PROVIDER_${_idx}"
+        _k_var="CLINE_API_KEY_${_idx}"
+        _m_var="CLINE_MODEL_${_idx}"
+        _p_val="${!_p_var:-}"
+        _k_val="${!_k_var:-}"
+        _m_val="${!_m_var:-}"
+        if [ -n "$_p_val" ] && [ -n "$_k_val" ]; then
+            _k_escaped="$(printf '%s' "$_k_val" | sed -e 's/\\/\\\\/g' -e 's/`/\\`/g' -e 's/\$/\\$/g' -e "s/'/'\\\\''/g")"
+            _p_escaped="$(printf '%s' "$_p_val" | sed -e 's/\\/\\\\/g' -e 's/`/\\`/g' -e 's/\$/\\$/g' -e "s/'/'\\\\''/g")"
+            CLINE_STD_KEY_EXPORT="${CLINE_STD_KEY_EXPORT}
+export ${_p_var}='${_p_escaped}'
+export ${_k_var}='${_k_escaped}'"
+            if [ -n "$_m_val" ]; then
+                _m_escaped="$(printf '%s' "$_m_val" | sed -e 's/\\/\\\\/g' -e 's/`/\\`/g' -e 's/\$/\\$/g' -e "s/'/'\\\\''/g")"
+                CLINE_STD_KEY_EXPORT="${CLINE_STD_KEY_EXPORT}
+export ${_m_var}='${_m_escaped}'"
+            fi
+            case "$_p_val" in
+                openai*|codex*)
+                    [ -z "$EFFECTIVE_OPENAI_API_KEY" ] && CLINE_STD_KEY_EXPORT="${CLINE_STD_KEY_EXPORT}
+export OPENAI_API_KEY='${_k_escaped}'"
+                    ;;
+                openrouter*)
+                    [ -z "${OPENROUTER_API_KEY:-}" ] && CLINE_STD_KEY_EXPORT="${CLINE_STD_KEY_EXPORT}
+export OPENROUTER_API_KEY='${_k_escaped}'"
+                    ;;
+                anthropic*)
+                    [ -z "${ANTHROPIC_API_KEY:-}" ] && CLINE_STD_KEY_EXPORT="${CLINE_STD_KEY_EXPORT}
+export ANTHROPIC_API_KEY='${_k_escaped}'"
+                    ;;
+            esac
+        fi
+    done
 fi
 # Webhook: AGENT_* is canonical, CLAUDE_* kept as back-compat alias.
 EFFECTIVE_WEBHOOK_URL="${AGENT_WEBHOOK_URL:-${CLAUDE_WEBHOOK_URL:-}}"
@@ -430,27 +468,51 @@ if [ "$AGENT" = "codex" ]; then
 fi
 
 # ---- Cline auth pre-seed (headless BYOK, only when AGENT=cline) ----
-# Writes the selected provider into /config/.cline/data/settings/providers.json:
+# Writes the configured provider(s) into /config/.cline/data/settings/providers.json:
 #   providers.<id>.settings = {provider, apiKey, model?}, lastUsedProvider, tokenSource "manual".
 # Shape confirmed from a real providers.json (v1, manual token source).
+# Supports primary provider (CLINE_PROVIDER, CLINE_API_KEY, CLINE_MODEL)
+# and indexed secondary providers (CLINE_PROVIDER_2, CLINE_API_KEY_2, CLINE_MODEL_2, ...).
 # Compose environment variables take precedence on container boot: init.sh merges the
-# configured provider into providers.json and sets lastUsedProvider so changes in
+# configured provider(s) into providers.json and sets lastUsedProvider so changes in
 # compose.yaml take effect immediately. Any other providers or settings configured
-# via `cline auth` are preserved in the file.
+# via `cline auth` or the UI are preserved in the file.
 if [ "$AGENT" = "cline" ]; then
-    if [ -n "$EFFECTIVE_CLINE_API_KEY" ]; then
-        echo "[claude-world] Pre-seeding Cline provider '${EFFECTIVE_CLINE_PROVIDER:-anthropic}' auth..."
-        CLINE_SETTINGS_DIR="/config/.cline/data/settings"
-        CLINE_PROVIDERS_PATH="${CLINE_SETTINGS_DIR}/providers.json"
-        mkdir -p "$CLINE_SETTINGS_DIR"
-        if python3 - "$CLINE_PROVIDERS_PATH" "${EFFECTIVE_CLINE_PROVIDER:-anthropic}" "$EFFECTIVE_CLINE_API_KEY" "${EFFECTIVE_CLINE_MODEL:-}" << 'PYEOF'
-import sys, json, os
+    CLINE_SETTINGS_DIR="/config/.cline/data/settings"
+    CLINE_PROVIDERS_PATH="${CLINE_SETTINGS_DIR}/providers.json"
+    mkdir -p "$CLINE_SETTINGS_DIR"
+    if python3 - "$CLINE_PROVIDERS_PATH" "${EFFECTIVE_CLINE_PROVIDER:-anthropic}" "${EFFECTIVE_CLINE_API_KEY:-}" "${EFFECTIVE_CLINE_MODEL:-}" << 'PYEOF'
+import sys, json, os, re
 from datetime import datetime, timezone
 
 path = sys.argv[1]
-provider = sys.argv[2] if len(sys.argv) > 2 and sys.argv[2] else "anthropic"
-api_key = sys.argv[3] if len(sys.argv) > 3 else ""
-model = sys.argv[4] if len(sys.argv) > 4 else ""
+primary_provider = sys.argv[2] if len(sys.argv) > 2 and sys.argv[2] else "anthropic"
+primary_api_key = sys.argv[3] if len(sys.argv) > 3 else ""
+primary_model = sys.argv[4] if len(sys.argv) > 4 else ""
+
+configured_providers = []
+if primary_api_key:
+    configured_providers.append((primary_provider, primary_api_key, primary_model, True))
+
+indices = set()
+for k in os.environ:
+    m = re.match(r"^CLINE_PROVIDER_([0-9]+)$", k)
+    if m:
+        indices.add(int(m.group(1)))
+    m_key = re.match(r"^CLINE_API_KEY_([0-9]+)$", k)
+    if m_key:
+        indices.add(int(m_key.group(1)))
+
+for idx in sorted(indices):
+    prov = os.environ.get(f"CLINE_PROVIDER_{idx}", "").strip()
+    key = os.environ.get(f"CLINE_API_KEY_{idx}", "").strip()
+    model = os.environ.get(f"CLINE_MODEL_{idx}", "").strip()
+    if prov and key:
+        configured_providers.append((prov, key, model, False))
+
+if not configured_providers:
+    print("[claude-world] WARNING: No Cline key found (CLINE_API_KEY, AGENT_API_KEY, or CLINE_API_KEY_*) — run 'cline auth' on first login.")
+    sys.exit(0)
 
 try:
     with open(path) as f:
@@ -468,40 +530,46 @@ if not isinstance(providers, dict):
     providers = {}
     data["providers"] = providers
 
-entry = providers.get(provider)
-if not isinstance(entry, dict):
-    entry = {}
+now_iso = datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+updated_names = []
 
-settings = entry.get("settings")
-if not isinstance(settings, dict):
-    settings = {}
+for prov, key, model, is_primary in configured_providers:
+    entry = providers.get(prov)
+    if not isinstance(entry, dict):
+        entry = {}
+    settings = entry.get("settings")
+    if not isinstance(settings, dict):
+        settings = {}
+    settings["provider"] = prov
+    settings["apiKey"] = key
+    if model:
+        settings["model"] = model
+    else:
+        settings.pop("model", None)
+    entry["settings"] = settings
+    entry["updatedAt"] = now_iso
+    entry["tokenSource"] = "manual"
+    providers[prov] = entry
+    if is_primary:
+        data["lastUsedProvider"] = prov
+    updated_names.append(prov)
 
-settings["provider"] = provider
-settings["apiKey"] = api_key
-if model:
-    settings["model"] = model
-else:
-    settings.pop("model", None)
-
-entry["settings"] = settings
-entry["updatedAt"] = datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
-entry["tokenSource"] = "manual"
-providers[provider] = entry
-data["lastUsedProvider"] = provider
+if "lastUsedProvider" not in data and updated_names:
+    data["lastUsedProvider"] = updated_names[0]
 
 os.makedirs(os.path.dirname(path), exist_ok=True)
 with open(path, "w") as f:
     json.dump(data, f, indent=2)
     f.write("\n")
-print(f"[claude-world] Cline providers.json updated (provider={provider})")
+
+prov_list = ", ".join(updated_names)
+default_prov = data.get("lastUsedProvider", "anthropic")
+print(f"[claude-world] Cline providers.json updated ({len(updated_names)} provider(s): {prov_list}; default={default_prov})")
 PYEOF
-        then
-            chown -R "$USER:$USER" /config/.cline
-        else
-            echo "[claude-world] WARNING: Failed to update Cline providers.json"
-        fi
+    then
+        chown -R "$USER:$USER" /config/.cline
     else
-        echo "[claude-world] WARNING: No Cline key found (CLINE_API_KEY or AGENT_API_KEY) — run 'cline auth' on first login."
+        echo "[claude-world] WARNING: Failed to update Cline providers.json"
     fi
 fi
 

@@ -45,7 +45,8 @@ services:
       CODEX_VERSION: ""
       # --- Cline ---
       # Headless BYOK: init.sh pre-seeds providers.json from these vars on boot.
-      # CLINE_API_KEY falls back to AGENT_API_KEY.
+      # CLINE_API_KEY falls back to AGENT_API_KEY. Additional providers can be configured
+      # via CLINE_PROVIDER_2, CLINE_API_KEY_2, CLINE_MODEL_2, etc.
       CLINE_API_KEY: ""
       CLINE_PROVIDER: anthropic
       CLINE_MODEL: ""
@@ -104,13 +105,13 @@ services:
             en_us: "Codex CLI version pin (defaults to 0.160.1; set to 'latest' to opt out of pinning)."
         - container: CLINE_API_KEY
           description:
-            en_us: "Provider API key for Cline (falls back to AGENT_API_KEY). Pre-seeded into providers.json on boot; 'cline auth' also works for OAuth providers."
+            en_us: "Provider API key for Cline (falls back to AGENT_API_KEY). Pre-seeded into providers.json on boot; add CLINE_API_KEY_2, etc. for additional backends."
         - container: CLINE_PROVIDER
           description:
-            en_us: "Cline provider id (e.g. anthropic, openai). Default: anthropic."
+            en_us: "Primary Cline provider id (e.g. anthropic, openai, openrouter). Default: anthropic. Additional providers can be set via CLINE_PROVIDER_2, etc."
         - container: CLINE_MODEL
           description:
-            en_us: "Cline model override. Falls back to AGENT_MODEL if empty. Leave empty for Cline default."
+            en_us: "Primary Cline model override. Falls back to AGENT_MODEL if empty. Set CLINE_MODEL_2, etc. for secondary providers."
         - container: GITHUB_TOKEN
           description:
             en_us: "GitHub fine-grained PAT (Settings → Developer settings → Personal access tokens)."

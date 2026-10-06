@@ -40,14 +40,10 @@ AGENT_MODEL: gpt-5      # optional, leave empty for Codex default
 ```yaml
 AGENT: cline
 AGENT_API_KEY: sk-ant-...  # your provider key (Anthropic by default)
-CLINE_PROVIDER: anthropic  # e.g. anthropic, openai
+CLINE_PROVIDER: anthropic  # e.g. anthropic, openai, openrouter
 ```
 
-Then on first login run `cline auth` (interactive, persists in `/config/.cline`). Env keys are convenience only — Cline's `providers.json` is IDE-managed, so headless API-key-only setup is best-effort. Per-run flags also work: `cline -P anthropic -m <model> -k <key> "task"`.
-
-> NOTE: merge pre-seed into `providers.json` is implemented in `init.sh` but UNTESTED against a real Cline binary. Before claiming zero-touch BYOK: boot with `AGENT=cline`, confirm `cline` picks up the pre-seeded provider without prompting, and check with maintainers which providers accept `apiKey` in settings vs OAuth-only.
-
-Or use the per-agent key instead of the generic one (`OPENAI_API_KEY: sk-...` for Codex, `ANTHROPIC_AUTH_TOKEN` for Claude, `CLINE_API_KEY` for Cline).
+Or use per-agent keys directly (`ANTHROPIC_AUTH_TOKEN` for Claude, `OPENAI_API_KEY` for Codex, `CLINE_API_KEY` for Cline). See [Cline](#cline) below for multi-provider configuration.
 
 ## Claude Code / API
 
@@ -98,6 +94,61 @@ Or, for a quick test without recreating:
 nano ~/.zshrc
 source ~/.zshrc
 ```
+
+## Cline
+
+Cline supports headless BYOK (Bring Your Own Key) pre-seeding into `/config/.cline/data/settings/providers.json` on boot, as well as multiple concurrent provider profiles and interactive OAuth via `cline auth`.
+
+| Env var | Default | What it does |
+|---------|---------|---------------|
+| `CLINE_PROVIDER` | `anthropic` | Primary provider ID: `anthropic`, `openai`, `openrouter`, `deepseek`, `gemini`, `bedrock`, `vertex`, `ollama`, etc. Active by default on boot |
+| `CLINE_API_KEY` | *(empty)* | Primary provider API key (falls back to `AGENT_API_KEY`). Pre-seeded into `providers.json` |
+| `CLINE_MODEL` | *(empty)* | Primary model override (e.g. `claude-3-7-sonnet-20250219`, `gpt-4o`). Leave empty for Cline default |
+| `CLINE_PROVIDER_<N>` | *(empty)* | Secondary provider ID for profile `<N>` (e.g. `CLINE_PROVIDER_2: openai`, `CLINE_PROVIDER_3: openrouter`) |
+| `CLINE_API_KEY_<N>` | *(empty)* | API key for the corresponding secondary provider profile (`CLINE_API_KEY_2`, `CLINE_API_KEY_3`, etc.) |
+| `CLINE_MODEL_<N>` | *(empty)* | Optional model override for the corresponding secondary provider (`CLINE_MODEL_2`, `CLINE_MODEL_3`, etc.) |
+
+### Single-provider setup
+
+```yaml
+AGENT: cline
+CLINE_PROVIDER: anthropic
+CLINE_API_KEY: sk-ant-...
+CLINE_MODEL: claude-3-7-sonnet-20250219
+```
+
+### Multi-provider & multi-model setup
+
+You can pre-configure multiple providers and models simultaneously so you can switch backends on the fly without entering credentials again:
+
+```yaml
+AGENT: cline
+# Primary provider (active by default):
+CLINE_PROVIDER: anthropic
+CLINE_API_KEY: sk-ant-...
+CLINE_MODEL: claude-3-7-sonnet-20250219
+
+# Provider 2 (OpenAI):
+CLINE_PROVIDER_2: openai
+CLINE_API_KEY_2: sk-proj-...
+CLINE_MODEL_2: gpt-4o
+
+# Provider 3 (OpenRouter):
+CLINE_PROVIDER_3: openrouter
+CLINE_API_KEY_3: sk-or-...
+CLINE_MODEL_3: deepseek/deepseek-r1
+```
+
+### How to use multiple providers
+
+- **Default run**: Typing `cline` or connecting via SSH/web terminal runs with the primary provider (`CLINE_PROVIDER`).
+- **Targeting a secondary provider**: Run `cline` with the `-P` / `--provider` flag to immediately use a pre-seeded secondary provider:
+  ```bash
+  cline -P openai "Audit this codebase for security issues"
+  cline -P openrouter -m deepseek/deepseek-r1 "Refactor database query caching"
+  ```
+- **Interactive switcher**: In the Cline terminal interface, open the provider settings menu to switch between any of your pre-configured profiles.
+- **Interactive login / OAuth**: Run `cline auth` inside the terminal at any time for providers requiring browser authentication or subscriptions. Existing profiles configured in `providers.json` are preserved across boots.
 
 ## Git / GitHub
 

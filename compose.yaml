@@ -47,12 +47,21 @@ services:
       CODEX_VERSION: ""
       # --- Cline ---
       # Headless BYOK: init.sh pre-seeds ~/.cline/data/settings/providers.json
-      # from these vars on every boot (merge — existing providers preserved).
+      # on every boot (merge — existing providers preserved).
+      # Primary provider (active by default on boot):
       # CLINE_API_KEY falls back to AGENT_API_KEY; also exported under the
       # provider's standard env name (see CLINE_PROVIDER) as convenience.
       CLINE_API_KEY: ""
       CLINE_PROVIDER: anthropic
       CLINE_MODEL: ""
+      # Additional providers & models (optional):
+      # Add numbered providers to configure multiple backends simultaneously:
+      # CLINE_PROVIDER_2: openai
+      # CLINE_API_KEY_2: ""
+      # CLINE_MODEL_2: gpt-4o
+      # CLINE_PROVIDER_3: openrouter
+      # CLINE_API_KEY_3: ""
+      # CLINE_MODEL_3: deepseek/deepseek-r1
       GIT_USER_NAME: CHANGE_ME_GIT_NAME
       GIT_USER_EMAIL: CHANGE_ME_GIT_EMAIL
       GITHUB_TOKEN: CHANGE_ME_GITHUB_TOKEN
