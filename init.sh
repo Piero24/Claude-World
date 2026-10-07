@@ -270,6 +270,11 @@ fi
 echo "[claude-world] Configuring SSH..."
 sed -i 's/#PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
 sed -i 's/^PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
+# Disable StrictModes so authorized_keys works across host volume bind-mounts
+sed -i 's/#StrictModes.*/StrictModes no/' /etc/ssh/sshd_config 2>/dev/null || true
+if ! grep -q "StrictModes" /etc/ssh/sshd_config 2>/dev/null; then
+    echo "StrictModes no" >> /etc/ssh/sshd_config
+fi
 # Allow custom env vars from SSH clients (for tmux auto-attach + timeout)
 if ! grep -q "AcceptEnv TMUX_AUTO" /etc/ssh/sshd_config 2>/dev/null; then
     echo "AcceptEnv TMUX_AUTO" >> /etc/ssh/sshd_config
@@ -1069,8 +1074,13 @@ for locfile in /config/.bashrc /config/.zshrc; do
     add_line 'export LC_ALL=en_US.UTF-8' "$locfile"
 done
 
-# ---- Fix ownership ----
+# ---- Fix ownership and SSH permissions ----
 chown -R "$USER:$USER" /config
+chmod 755 /config
+if [ -d /config/.ssh ]; then
+    chmod 700 /config/.ssh
+    [ -f /config/.ssh/authorized_keys ] && chmod 600 /config/.ssh/authorized_keys
+fi
 
 # ---- Workplace: allow mkdir at root (mount owned by PUID, user may differ) ----
 if [ -d /workplace ]; then
