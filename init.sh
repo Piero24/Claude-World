@@ -994,6 +994,12 @@ for rcfile in /config/.bashrc /config/.zshrc; do
     sed -i '/^# >>> Claude World Auto-Launch/,/^# <<< Claude World Auto-Launch/d' "$rcfile" 2>/dev/null
     cat >> "$rcfile" << 'AUTOLAUNCH'
 # >>> Claude World Auto-Launch (written by init.sh — do not edit)
+# Only run in an interactive shell (skips non-interactive subshells and scripts)
+case "$-" in
+    *i*) ;;
+    *) return 0 2>/dev/null || exit 0 ;;
+esac
+
 # Clean up forwarded/stale tmux sockets from SSH client forwarding
 if [ -n "$TMUX" ] && [ ! -S "$(echo "$TMUX" | cut -d, -f1)" ]; then
     unset TMUX
