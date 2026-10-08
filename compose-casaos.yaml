@@ -60,6 +60,17 @@ services:
       CLINE_TELEGRAM_BOT_USERNAME: ""
       CLINE_TELEGRAM_CWD: /workplace
       CLINE_TELEGRAM_TOOLS: "on"
+      # --- Paseo (remote / mobile control plane) ---
+      # Drive your agents from a phone, browser or the desktop app.
+      # Enables the daemon on port 6767 + the bundled web UI, and installs every
+      # agent listed in PASEO_AGENTS so Paseo can run all of them.
+      PASEO_ENABLED: "0"
+      PASEO_AGENTS: ""
+      PASEO_PASSWORD: ""
+      PASEO_LISTEN: "0.0.0.0:6767"
+      PASEO_WEB_UI_ENABLED: "1"
+      PASEO_RELAY_ENABLED: "0"
+      PASEO_HOSTNAMES: ""
       GIT_USER_NAME: CHANGE_ME_GIT_NAME
       GIT_USER_EMAIL: CHANGE_ME_GIT_EMAIL
       GITHUB_TOKEN: CHANGE_ME_GITHUB_TOKEN
@@ -137,6 +148,27 @@ services:
         - container: CLINE_TELEGRAM_TOOLS
           description:
             en_us: "on or off. off adds --no-tools so Telegram sessions can chat but not touch files or run commands."
+        - container: PASEO_ENABLED
+          description:
+            en_us: "Enable the Paseo daemon (remote/mobile control plane) on port 6767. 1 to enable, 0 to disable."
+        - container: PASEO_AGENTS
+          description:
+            en_us: "Comma-separated agent CLIs to install for Paseo (claude, codex, cline). Default: the AGENT value."
+        - container: PASEO_PASSWORD
+          description:
+            en_us: "Paseo daemon password. REQUIRED when the port is reachable: without it anyone who can reach the daemon can control your agents."
+        - container: PASEO_LISTEN
+          description:
+            en_us: "Address the Paseo daemon listens on (host:port). Default: 0.0.0.0:6767."
+        - container: PASEO_WEB_UI_ENABLED
+          description:
+            en_us: "Serve the full Paseo web UI from the daemon. 1 = enabled (default), 0 = API only."
+        - container: PASEO_RELAY_ENABLED
+          description:
+            en_us: "Enable the end-to-end encrypted Paseo relay for device pairing. 1 = enabled, 0 = disabled (default)."
+        - container: PASEO_HOSTNAMES
+          description:
+            en_us: "Extra DNS names the daemon accepts (comma separated), for reverse proxy setups."
         - container: GITHUB_TOKEN
           description:
             en_us: "GitHub fine-grained PAT (Settings → Developer settings → Personal access tokens)."
@@ -152,6 +184,9 @@ services:
         protocol: tcp
       - target: 22
         published: 2222
+        protocol: tcp
+      - target: 6767
+        published: 6767
         protocol: tcp
     volumes:
       - type: bind

@@ -25,6 +25,7 @@ Edit `compose.yaml`, recreate the container, done.
 | `AGENT_API_KEY` | *(empty)* | Generic API key, mapped to the selected agent. Per-agent keys take precedence if set |
 | `AGENT_MODEL` | *(empty)* | Generic model override for the selected agent. Leave empty for the agent default |
 | `AGENT_BASE_URL` | *(empty)* | Generic base URL override (Claude Code only; unsupported by Codex) |
+| `PASEO_AGENTS` | *(empty)* | Extra agent CLIs to install and configure for [Paseo](./paseo): `claude,codex,cline`. Empty means only `AGENT` |
 | `CODEX_VERSION` | `0.160.1` | Pinned Codex CLI version. Set to `latest` to opt out of version pinning |
 
 **Codex example:**
@@ -189,6 +190,28 @@ Useful in-chat commands: `/clear` (fresh session), `/whereami` (session/thread i
 Logs: `/config/cline-telegram.log`. Inside the container you can also run `cline connect --stop telegram` or `cline doctor` (lists active and hub-supervised connectors).
 
 Removing `CLINE_TELEGRAM_TOKEN` and recreating the container disables the connector again.
+
+## Paseo (remote control plane)
+
+Enables the [Paseo](https://paseo.sh) daemon so you can drive your agents from a phone, browser or desktop app. See [Paseo](./paseo) for the full walkthrough.
+
+| Env var | Default | What it does |
+|---------|---------|--------------|
+| `PASEO_ENABLED` | `0` | `1` installs the Paseo CLI and starts the daemon on every boot |
+| `PASEO_AGENTS` | *(empty)* | Comma-separated agent CLIs to install and configure for Paseo: `claude,codex,cline`. Empty means only `AGENT` |
+| `PASEO_PASSWORD` | *(empty)* | Daemon password. **Required** whenever port 6767 is reachable |
+| `PASEO_LISTEN` | `0.0.0.0:6767` | Address the daemon binds to |
+| `PASEO_WEB_UI_ENABLED` | `1` | Serve the bundled Paseo web app from the daemon |
+| `PASEO_RELAY_ENABLED` | `0` | Enable the end-to-end encrypted relay for device pairing |
+| `PASEO_HOSTNAMES` | *(empty)* | Extra DNS names the daemon accepts (comma separated), for reverse proxies |
+
+```yaml
+PASEO_ENABLED: "1"
+PASEO_AGENTS: "claude,codex,cline"   # installs all three CLIs
+PASEO_PASSWORD: "change-me"
+```
+
+State lives in `/config/.paseo` (`PASEO_HOME`); the daemon log is `/config/paseo.log`.
 
 ## Git / GitHub
 

@@ -75,6 +75,24 @@ services:
       # Working directory for Telegram sessions, and whether tools are enabled.
       CLINE_TELEGRAM_CWD: /workplace
       CLINE_TELEGRAM_TOOLS: "on"
+      # --- Paseo (remote / mobile control plane) ---
+      # Drive your agents from a phone, browser or the desktop app.
+      # Enables the daemon on port 6767 + the bundled web UI, and installs every
+      # agent listed in PASEO_AGENTS so Paseo can run all of them.
+      PASEO_ENABLED: "0"
+      # Agent CLIs to install and configure for Paseo. Default: AGENT.
+      # Example: "claude,codex,cline" (each needs its own API key below).
+      PASEO_AGENTS: ""
+      # REQUIRED whenever the port is reachable: without it anyone who can reach
+      # the daemon can control your agents.
+      PASEO_PASSWORD: ""
+      PASEO_LISTEN: "0.0.0.0:6767"
+      # Serve the full Paseo web UI from the daemon (usable from a phone browser).
+      PASEO_WEB_UI_ENABLED: "1"
+      # Opt-in end-to-end encrypted relay: pair a device with `paseo daemon pair --relay`.
+      PASEO_RELAY_ENABLED: "0"
+      # Extra DNS names the daemon accepts (comma separated), for reverse proxies.
+      PASEO_HOSTNAMES: ""
       GIT_USER_NAME: CHANGE_ME_GIT_NAME
       GIT_USER_EMAIL: CHANGE_ME_GIT_EMAIL
       GITHUB_TOKEN: CHANGE_ME_GITHUB_TOKEN
@@ -87,6 +105,8 @@ services:
     ports:
       - "7681:7681"
       - "2222:22"
+      # Paseo daemon + web UI (only listens when PASEO_ENABLED=1)
+      - "6767:6767"
     volumes:
       - ./config:/config
       - ./workplace:/workplace

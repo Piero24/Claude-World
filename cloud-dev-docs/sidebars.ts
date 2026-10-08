@@ -15,7 +15,7 @@ const sidebars: SidebarsConfig = {
     {
       type: 'category',
       label: 'Daily Use',
-      items: ['daily-workflow', 'cline-desktop', 'persistence'],
+      items: ['daily-workflow', 'cline-desktop', 'paseo', 'persistence'],
     },
     {
       type: 'category',

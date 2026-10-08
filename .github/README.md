@@ -78,11 +78,14 @@ docker compose up -d
 |--------|---------------|------|
 | Web terminal | `http://<server-ip>:7681` | `PASSWORD`, agent auto-launches |
 | SSH | `ssh abc@<server-ip> -p 2222` | `SUDO_PASSWORD`, agent auto-launches |
+| Paseo (optional) | `http://<server-ip>:6767` | `PASEO_PASSWORD`, agent control |
 
 ## Key features
 
 - **One container for dev**: web terminal + SSH. No desktop, no separate VS Code
 - **Agent auto-launch**: connect via SSH or web terminal and your agent (Claude, Codex or Cline, picked with `AGENT`) is ready in `/workplace`. Exit the agent to get a shell prompt
+- **Chat from Telegram** (optional): drive your agent from your phone with `CLINE_TELEGRAM_TOKEN`
+- **Paseo control plane** (optional): run and watch agents from a phone, browser or desktop app with `PASEO_ENABLED=1`
 - **Monitoring**: Beszel agent feeds system metrics to your existing hub
 - **Web terminal (ttyd)**: full bash shell in your browser, password-protected
 - **SSH access**: connect from local devices like PC, Mac, or iPhone
@@ -114,7 +117,7 @@ If it lands in `/config`, it persists forever. If it needs `sudo` or `apt`, add 
 |------|---------|
 | [`compose.yaml`](compose.yaml) | Plain Docker Compose (short syntax, relative paths) |
 | [`compose-casaos.yaml`](compose-casaos.yaml) | CasaOS Compose (long syntax, `x-casaos` metadata) |
-| [`init.sh`](init.sh) | Container boot script: SSH, ttyd, nvm, Node, agent CLI |
+| [`init.sh`](init.sh) | Container boot script: SSH, ttyd, nvm, Node, agent CLIs, connectors |
 | [`install.sh`](install.sh) | Interactive CasaOS installer |
 
 ## Docs
@@ -124,8 +127,11 @@ Full documentation at [`cloud-dev-docs/`](cloud-dev-docs/):
 - [Overview & Architecture](cloud-dev-docs/docs/index.mdx)
 - [Server Setup](cloud-dev-docs/docs/server-setup.mdx): Docker or CasaOS
 - [Daily Workflow](cloud-dev-docs/docs/daily-workflow.mdx): tmux, persistent sessions, Termius
+- [Cline Desktop](cloud-dev-docs/docs/cline-desktop.mdx): connect the desktop app over SSH
+- [Paseo](cloud-dev-docs/docs/paseo.mdx): remote/mobile control plane
 - [Persistence](cloud-dev-docs/docs/persistence.mdx)
 - [Environment Variables](cloud-dev-docs/docs/env-vars.mdx): full reference
+- [Agent Files](cloud-dev-docs/docs/agent-config.mdx): instructions and skills per agent
 
 ## Requirements
 

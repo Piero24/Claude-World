@@ -1,0 +1,105 @@
+---
+sidebar_position: 7
+---
+
+# Paseo (remote control plane)
+
+[Paseo](https://paseo.sh) is an agentic development environment: a daemon that wraps the coding agents you already installed, plus clients (desktop, iOS/Android, browser, CLI) that let you drive those agents from anywhere.
+
+It does not ship its own agent, and it does not send your code anywhere: the agents run as normal subprocesses inside this container, with your existing configuration and credentials.
+
+## Enable it
+
+```yaml
+AGENT: claude
+# Install all three CLIs so Paseo can drive any of them
+PASEO_AGENTS: "claude,codex,cline"
+PASEO_ENABLED: "1"
+PASEO_PASSWORD: "change-me"      # required: see Security below
+```
+
+```bash
+docker compose up -d --force-recreate
+```
+
+On boot `init.sh` installs the Paseo CLI, writes `/config/.paseo/config.json`, and starts the daemon. Paseo runs on port **6767**.
+
+:::tip[Just want one agent?]
+Leave `PASEO_AGENTS` empty and Paseo only sees your primary `AGENT`. Listing extra agents installs their CLIs and configures their credentials too.
+:::
+
+## Which agents appear
+
+| Provider | How it works |
+|----------|--------------|
+| **Claude Code** | Native support. Auto-detected from the `claude` binary on `PATH`. |
+| **Codex** | Native support. Auto-detected from the `codex` binary on `PATH`. |
+| **Cline** | Via [ACP](https://agentclientprotocol.com). `init.sh` writes a provider entry that runs the installed `cline --acp`. |
+
+Extra agents need their own keys, since each agent has its own credential file (see [Environment Variables](./env-vars)):
+
+```yaml
+PASEO_AGENTS: "claude,codex,cline"
+ANTHROPIC_AUTH_TOKEN: sk-ant-...   # claude
+OPENAI_API_KEY: sk-proj-...        # codex
+CLINE_API_KEY: sk-or-...           # cline
+CLINE_PROVIDER: openrouter
+```
+
+Check that the daemon can see a provider:
+
+```bash
+paseo provider diagnostic claude
+paseo provider diagnostic cline
+```
+
+## Connecting from your devices
+
+| Method | How |
+|--------|-----|
+| **Web UI** | The daemon serves the full Paseo web app: open `http://<server-ip>:6767` (set `PASEO_WEB_UI_ENABLED: "1"`, the default). |
+| **Desktop / mobile app** | Add a **direct connection**: host `<server-ip>`, port `6767`, and the `PASEO_PASSWORD` value. |
+| **Relay** | Set `PASEO_RELAY_ENABLED: "1"`, then run `paseo daemon pair --relay` inside the container to print a QR code and pairing link. Traffic is end-to-end encrypted and no port needs to be exposed. |
+
+For a DNS name or reverse proxy, add the hostname to `PASEO_HOSTNAMES` and terminate TLS at the proxy.
+
+## Managing it
+
+```bash
+# Inside the container (SSH or web terminal)
+paseo daemon status
+paseo daemon restart
+paseo daemon stop
+paseo daemon set-password          # change the password (then restart)
+paseo ls                           # list running agents
+paseo run --provider cline "fix the failing tests"
+```
+
+Logs: `/config/paseo.log`.
+
+## Files
+
+| Path | Purpose |
+|------|---------|
+| `/config/.paseo/` | `PASEO_HOME`: daemon state, pairings, settings |
+| `/config/.paseo/config.json` | Daemon settings + the Cline ACP provider. Written once; edit it and run `paseo reload`. |
+| `/config/paseo.log` | Daemon startup log |
+
+:::note[config.json is write-once]
+`init.sh` only creates `/config/.paseo/config.json` on first boot, so your edits (and the password hash written by `paseo daemon set-password`) survive rebuilds. Delete the file and recreate the container to regenerate it.
+:::
+
+## Security
+
+The daemon can run commands on your machine, so treat it like a shell:
+
+- **Always set `PASEO_PASSWORD`** before publishing port 6767. Without it, anyone who can reach the daemon can control your agents. `init.sh` prints a warning at boot if it is missing.
+- **Password auth protects access, not confidentiality.** It does not encrypt traffic. Over an untrusted network use the relay (end-to-end encrypted), a VPN such as Tailscale, or TLS at a reverse proxy.
+- **Pairing codes are secrets.** Anyone with the pairing link can connect.
+- Port 6767 is published in `compose.yaml` as `6767:6767`; remove that mapping if you only use the relay.
+
+## Related
+
+- [Agent Files](./agent-config): where each agent's instructions and skills live
+- [Environment Variables](./env-vars): the full `PASEO_*` reference
+- [Paseo documentation](https://paseo.sh/docs)

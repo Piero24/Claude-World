@@ -68,6 +68,32 @@ else
 fi
 echo "[claude-world] Agent: '$AGENT' (binary: '$AGENT_BIN')"
 
+# ---- Agent set: primary agent + any extras exposed to Paseo ----
+# AGENT is the primary agent: it auto-launches on connect and receives the
+# generic AGENT_API_KEY. PASEO_AGENTS lists every agent CLI to install and
+# configure, so a control plane like Paseo can drive them all.
+# Defaults to AGENT, so behaviour is unchanged unless you opt in.
+# Extra agents are credentialed by their own per-agent keys
+# (ANTHROPIC_AUTH_TOKEN, OPENAI_API_KEY, CLINE_API_KEY).
+PASEO_AGENTS="${PASEO_AGENTS:-$AGENT}"
+AGENT_LIST=""
+for _a in $(printf '%s' "$PASEO_AGENTS" | tr ',' ' '); do
+    case "$_a" in
+        claude|codex|cline) ;;
+        *) echo "[claude-world] WARNING: ignoring unknown agent '$_a' in PASEO_AGENTS (valid: claude|codex|cline)."; continue ;;
+    esac
+    case " $AGENT_LIST " in
+        *" $_a "*) ;;
+        *) AGENT_LIST="$AGENT_LIST $_a" ;;
+    esac
+done
+case " $AGENT_LIST " in *" $AGENT "*) ;; *) AGENT_LIST="$AGENT $AGENT_LIST" ;; esac
+# normalise spacing (AGENT may have been prepended to an already-spaced list)
+AGENT_LIST="$(printf '%s' "$AGENT_LIST" | tr -s ' ' | sed -e 's/^ //' -e 's/ $//')"
+# agent_selected <claude|codex|cline> — is that agent enabled?
+agent_selected() { case " $AGENT_LIST " in *" $1 "*) return 0 ;; esac ; return 1 ; }
+echo "[claude-world] Agents enabled: $AGENT_LIST (primary: $AGENT)"
+
 # ---- Generic BYOK resolution ----
 # AGENT_API_KEY / AGENT_MODEL / AGENT_BASE_URL are canonical.
 # Back-compat aliases: AI_API_KEY, AI_MODEL, AI_BASE_URL, AGENT_CLI.
@@ -377,11 +403,29 @@ install_cline() {
     fi
 }
 
-case "$AGENT" in
-    claude) install_claude ;;
-    codex) install_codex ;;
-    cline) install_cline ;;
-esac
+# ---- Paseo (remote / mobile control plane for your agents) ----
+# Installed via npm (binary: paseo). Only when PASEO_ENABLED=1.
+# The daemon itself is started later, after the agent CLIs and credentials.
+install_paseo() {
+    if [ -d /config/.nvm ]; then
+        if ! su - "$USER" -c 'export HOME=/config && export NVM_DIR="/config/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && command -v paseo >/dev/null 2>&1'; then
+            echo "[claude-world] Installing Paseo CLI..."
+            su - "$USER" -c 'export HOME=/config && export NVM_DIR="/config/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && npm install -g @getpaseo/cli'
+            echo "[claude-world] Paseo CLI installed ($(su - "$USER" -c 'export HOME=/config && export NVM_DIR="/config/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && paseo --version 2>/dev/null | head -1' || echo unknown))."
+        else
+            echo "[claude-world] Paseo CLI already installed, skipping."
+        fi
+    fi
+}
+
+# Install every agent in the set (primary AGENT + any PASEO_AGENTS extras)
+for _a in $AGENT_LIST; do
+    "install_${_a}"
+done
+
+if [ "${PASEO_ENABLED:-0}" = "1" ]; then
+    install_paseo
+fi
 
 # Disable Claude Code auto-updater (keep pinned version — remove when restoring latest)
 # Harmless when AGENT=codex (kept for users switching back to claude).
@@ -449,7 +493,7 @@ done
 # ---- Codex config (API-key auth + model) ----
 # Codex reads ~/.codex/config.toml and authenticates via OPENAI_API_KEY.
 # Written fresh on every boot when AGENT=codex — safe to re-run.
-if [ "$AGENT" = "codex" ]; then
+if agent_selected codex; then
     if [ -n "$EFFECTIVE_OPENAI_API_KEY" ] && [ "$EFFECTIVE_OPENAI_API_KEY" != "CHANGE_ME_OPENAI_KEY" ]; then
         echo "[claude-world] Configuring Codex API key auth..."
         mkdir -p /config/.codex
@@ -472,7 +516,7 @@ if [ "$AGENT" = "codex" ]; then
     fi
 fi
 
-# ---- Cline auth pre-seed (headless BYOK, only when AGENT=cline) ----
+# ---- Cline auth pre-seed (headless BYOK, when cline is enabled) ----
 # Writes the configured provider(s) into /config/.cline/data/settings/providers.json:
 #   providers.<id>.settings = {provider, apiKey, model?}, lastUsedProvider, tokenSource "manual".
 # Shape confirmed from a real providers.json (v1, manual token source).
@@ -482,7 +526,7 @@ fi
 # configured provider(s) into providers.json and sets lastUsedProvider so changes in
 # compose.yaml take effect immediately. Any other providers or settings configured
 # via `cline auth` or the UI are preserved in the file.
-if [ "$AGENT" = "cline" ]; then
+if agent_selected cline; then
     CLINE_SETTINGS_DIR="/config/.cline/data/settings"
     CLINE_PROVIDERS_PATH="${CLINE_SETTINGS_DIR}/providers.json"
     mkdir -p "$CLINE_SETTINGS_DIR"
@@ -586,14 +630,18 @@ fi
 #   claude → /config/.claude/CLAUDE.md
 #   cline  → /config/.cline/rules/claude-world.md
 #   codex  → /config/.codex/AGENTS.md
-case "$AGENT" in
+for _a in $AGENT_LIST; do
+case "$_a" in
     claude) AGENT_INSTRUCTIONS="/config/.claude/CLAUDE.md" ;;
     cline)  AGENT_INSTRUCTIONS="/config/.cline/rules/claude-world.md" ;;
     codex)  AGENT_INSTRUCTIONS="/config/.codex/AGENTS.md" ;;
 esac
-if [ ! -f "$AGENT_INSTRUCTIONS" ]; then
-    echo "[claude-world] Creating global instructions for '$AGENT' ($AGENT_INSTRUCTIONS)..."
-    mkdir -p "$(dirname "$AGENT_INSTRUCTIONS")"
+if [ -f "$AGENT_INSTRUCTIONS" ]; then
+    echo "[claude-world] Global instructions already exist ($AGENT_INSTRUCTIONS), skipping."
+    continue
+fi
+echo "[claude-world] Creating global instructions for '$_a' ($AGENT_INSTRUCTIONS)..."
+mkdir -p "$(dirname "$AGENT_INSTRUCTIONS")"
     cat > "$AGENT_INSTRUCTIONS" << 'CLAUDE_MD_EOF'
 # Global Instructions — Claude World
 
@@ -631,14 +679,12 @@ if [ ! -f "$AGENT_INSTRUCTIONS" ]; then
 CLAUDE_MD_EOF
     chown "$USER:$USER" "$AGENT_INSTRUCTIONS"
     echo "[claude-world] Global instructions created (edit $AGENT_INSTRUCTIONS to customize)"
-else
-    echo "[claude-world] Global instructions already exist ($AGENT_INSTRUCTIONS), skipping."
-fi
+done
 
-# ---- Claude Code settings.json (only when AGENT=claude: permissions + autonomy) ----
+# ---- Claude Code settings.json (when claude is enabled: permissions + autonomy) ----
 # Written on first boot ONLY — edit /config/.claude/settings.json to customize.
 # To force regeneration, delete the file and restart the container.
-if [ "$AGENT" = "claude" ]; then
+if agent_selected claude; then
 CLAUDE_SETTINGS="/config/.claude/settings.json"
 if [ ! -f "$CLAUDE_SETTINGS" ]; then
     echo "[claude-world] Creating Claude Code settings.json with pre-approved permissions..."
@@ -694,7 +740,7 @@ fi
 # Runs every boot (not just first) so existing installations get the hook too.
 # Only for AGENT=claude (native idle_prompt hook). AGENT_* is canonical,
 # CLAUDE_* kept as back-compat alias.
-if [ "$AGENT" = "claude" ] && [ -n "$EFFECTIVE_WEBHOOK_URL" ] && [ "$EFFECTIVE_WEBHOOK_URL" != "CHANGE_ME_WEBHOOK_URL" ]; then
+if agent_selected claude && [ -n "$EFFECTIVE_WEBHOOK_URL" ] && [ "$EFFECTIVE_WEBHOOK_URL" != "CHANGE_ME_WEBHOOK_URL" ]; then
     echo "[claude-world] Configuring idle_prompt webhook hook..."
     python3 -c "
 import json, os
@@ -950,7 +996,8 @@ fi
 #   claude → /config/.claude/skills/cleanup-merged/SKILL.md
 #   cline  → /config/.cline/skills/cleanup-merged/SKILL.md
 #   codex  → /config/.codex/skills/cleanup-merged/SKILL.md
-case "$AGENT" in
+for _a in $AGENT_LIST; do
+case "$_a" in
     claude) CLEANUP_SKILL_DIR="/config/.claude/skills/cleanup-merged" ;;
     cline)  CLEANUP_SKILL_DIR="/config/.cline/skills/cleanup-merged" ;;
     codex)  CLEANUP_SKILL_DIR="/config/.codex/skills/cleanup-merged" ;;
@@ -965,9 +1012,12 @@ if [ -f "$LEGACY_CLEANUP_SKILL" ] && [ ! -f "$CLEANUP_SKILL" ]; then
     mv "$LEGACY_CLEANUP_SKILL" "$CLEANUP_SKILL"
 fi
 
-if [ ! -f "$CLEANUP_SKILL" ]; then
-    echo "[claude-world] Creating cleanup-merged skill for '$AGENT'..."
-    mkdir -p "$CLEANUP_SKILL_DIR"
+if [ -f "$CLEANUP_SKILL" ]; then
+    echo "[claude-world] cleanup-merged skill already exists ($CLEANUP_SKILL), skipping."
+    continue
+fi
+echo "[claude-world] Creating cleanup-merged skill for '$_a'..."
+mkdir -p "$CLEANUP_SKILL_DIR"
     cat > "$CLEANUP_SKILL" << 'CLEANUP_SKILL_EOF'
 ---
 name: cleanup-merged
@@ -1014,9 +1064,7 @@ Print how many local branches, remote branches, and issues were cleaned up.
 CLEANUP_SKILL_EOF
     chown -R "$USER:$USER" "$CLEANUP_SKILL_DIR"
     echo "[claude-world] cleanup-merged skill created (edit $CLEANUP_SKILL to customize)"
-else
-    echo "[claude-world] cleanup-merged skill already exists, skipping."
-fi
+done
 
 # ---- Git / GitHub config (from Compose env) ----
 if [ -n "${GIT_USER_NAME}" ] && [ "${GIT_USER_NAME}" != "CHANGE_ME_GIT_NAME" ]; then
@@ -1073,7 +1121,7 @@ AUTOLAUNCH
     sed -i "s/__AGENT_BIN__/${AGENT_BIN:-claude}/" "$rcfile"
 done
 
-# ---- Cline connector: Telegram bridge (AGENT=cline only) ----
+# ---- Cline connector: Telegram bridge (when cline is enabled) ----
 # When CLINE_TELEGRAM_TOKEN is set in compose.yaml, start the hub daemon and
 # bring the Telegram connector up on every boot. The registration itself lives
 # in the hub DB (/config/.cline/data/db/connectors.db), so it survives rebuilds:
@@ -1085,7 +1133,7 @@ case "$_EFFECTIVE_TELEGRAM_TOKEN" in
 esac
 TELEGRAM_STATE="/config/.cline/.telegram-connector.state"
 
-if [ "$AGENT" = "cline" ]; then
+if agent_selected cline; then
 if [ -n "$_EFFECTIVE_TELEGRAM_TOKEN" ]; then
     TELEGRAM_CWD="${CLINE_TELEGRAM_CWD:-/workplace}"
     TELEGRAM_TOOLS="${CLINE_TELEGRAM_TOOLS:-on}"
@@ -1182,6 +1230,115 @@ else
     echo "[claude-world] Telegram connector: disabled (set CLINE_TELEGRAM_TOKEN in compose.yaml to enable)."
 fi
 fi # end AGENT=cline gate for the Telegram connector
+
+# ---- Paseo daemon (remote / mobile control plane) ----
+# Started as an env-driven foreground deployment (`paseo daemon run`), because the
+# managed `paseo daemon start` ignores PASEO_LISTEN / web UI / relay overrides.
+# State lives in PASEO_HOME (/config/.paseo), so pairings and settings survive rebuilds.
+if [ "${PASEO_ENABLED:-0}" = "1" ]; then
+    PASEO_HOME_DIR="/config/.paseo"
+    PASEO_LISTEN="${PASEO_LISTEN:-0.0.0.0:6767}"
+    PASEO_WEB_UI_ENABLED="${PASEO_WEB_UI_ENABLED:-1}"
+
+    # Seed config.json on first boot only — it also holds the password hash
+    # written by `paseo daemon set-password` and any user edits.
+    PASEO_CONFIG="${PASEO_HOME_DIR}/config.json"
+    if [ ! -f "$PASEO_CONFIG" ]; then
+        echo "[claude-world] Creating Paseo config ($PASEO_CONFIG)..."
+        mkdir -p "$PASEO_HOME_DIR"
+        python3 - "$PASEO_CONFIG" "$PASEO_LISTEN" "$PASEO_WEB_UI_ENABLED" "$AGENT_LIST" << 'PYEOF'
+import json, sys
+
+path, listen, web_ui, agents = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4].split()
+cfg = {
+    "$schema": "https://paseo.sh/schemas/paseo.config.v1.json",
+    "version": 1,
+    "daemon": {"listen": listen},
+    "features": {"webUi": {"enabled": web_ui not in ("0", "false", "no")}},
+    "agents": {"providers": {}},
+}
+
+# Cline speaks ACP. Paseo's shipped catalog entry runs `npx -y cline@<pinned>`,
+# which would download a second Cline — point it at the installed binary instead.
+if "cline" in agents:
+    cfg["agents"]["providers"]["cline"] = {
+        "extends": "acp",
+        "label": "Cline",
+        "command": ["cline", "--acp"],
+    }
+
+with open(path, "w") as f:
+    json.dump(cfg, f, indent=2)
+    f.write("\n")
+print(f"[claude-world] Paseo config written (custom providers: {', '.join(cfg['agents']['providers']) or 'none'})")
+PYEOF
+        chown -R "$USER:$USER" "$PASEO_HOME_DIR"
+    else
+        echo "[claude-world] Paseo config already exists, skipping."
+    fi
+
+    # Helper: run the daemon with the container user's env and the agent PATH.
+    cat > /usr/local/bin/paseo-start.sh << 'PASEOSTART'
+#!/bin/bash
+# ================================================================
+# paseo-start.sh — run the Paseo daemon (env-driven foreground deployment)
+# Runs as the container user (HOME=/config) so it reuses the agent CLIs and
+# credentials installed by init.sh (claude, codex, cline are all on PATH).
+# Env: PASEO_LISTEN, PASEO_WEB_UI_ENABLED, PASEO_PASSWORD,
+#      PASEO_RELAY_ENABLED, PASEO_HOSTNAMES
+# ================================================================
+set -u
+
+export HOME=/config
+export NVM_DIR="/config/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+export PATH="/config/.npm-global/bin:$PATH"
+export PASEO_HOME="${PASEO_HOME:-/config/.paseo}"
+
+LOG="/config/paseo.log"
+touch "$LOG" 2>/dev/null || LOG="/tmp/paseo.log"
+
+log() { echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $*" >> "$LOG"; }
+
+if ! command -v paseo >/dev/null 2>&1; then
+    log "paseo binary not found on PATH, skipping"
+    exit 0
+fi
+
+if [ -z "${PASEO_PASSWORD:-}" ]; then
+    log "WARNING: PASEO_PASSWORD is not set — any client that can reach ${PASEO_LISTEN:-0.0.0.0:6767} can control your agents."
+fi
+
+log "starting daemon (listen=${PASEO_LISTEN:-0.0.0.0:6767} webUI=${PASEO_WEB_UI_ENABLED:-1} relay=${PASEO_RELAY_ENABLED:-0})"
+exec paseo daemon run >> "$LOG" 2>&1
+PASEOSTART
+    chmod +x /usr/local/bin/paseo-start.sh
+
+    # Escape values for single-quoted embedding in the su command below.
+    _paseo_esc() { printf '%s' "$1" | sed "s/'/'\\\\''/g"; }
+    _P_LISTEN="$(_paseo_esc "$PASEO_LISTEN")"
+    _P_WEBUI="$(_paseo_esc "$PASEO_WEB_UI_ENABLED")"
+    _P_RELAY="$(_paseo_esc "${PASEO_RELAY_ENABLED:-0}")"
+
+    _PASEO_EXPORTS="export HOME=/config && export PASEO_LISTEN='${_P_LISTEN}' && export PASEO_WEB_UI_ENABLED='${_P_WEBUI}' && export PASEO_RELAY_ENABLED='${_P_RELAY}'"
+    if [ -n "${PASEO_PASSWORD:-}" ]; then
+        _PASEO_EXPORTS="${_PASEO_EXPORTS} && export PASEO_PASSWORD='$(_paseo_esc "$PASEO_PASSWORD")'"
+    fi
+    if [ -n "${PASEO_HOSTNAMES:-}" ]; then
+        _PASEO_EXPORTS="${_PASEO_EXPORTS} && export PASEO_HOSTNAMES='$(_paseo_esc "$PASEO_HOSTNAMES")'"
+    fi
+
+    # Launch in the background as the container user (mirrors the ttyd pattern)
+    su - "$USER" -c "${_PASEO_EXPORTS} && nohup /usr/local/bin/paseo-start.sh > /dev/null 2>&1 &"
+
+    if [ -n "${PASEO_PASSWORD:-}" ]; then
+        echo "[claude-world] Paseo daemon: enabled on ${PASEO_LISTEN} (web UI ${PASEO_WEB_UI_ENABLED}, password set)"
+    else
+        echo "[claude-world] WARNING: Paseo daemon enabled WITHOUT PASEO_PASSWORD — anyone who can reach ${PASEO_LISTEN} can control your agents. Set PASEO_PASSWORD in compose.yaml."
+    fi
+else
+    echo "[claude-world] Paseo: disabled (set PASEO_ENABLED=1 in compose.yaml to enable)."
+fi
 
 # ---- tmux aliases ----
 add_line 'alias ta="tmux new -A -s main"' /config/.bashrc
