@@ -93,6 +93,7 @@ const config: Config = {
             {label: 'Overview & Architecture', to: '/docs/'},
             {label: 'Server Setup', to: '/docs/server-setup'},
             {label: 'Daily Workflow', to: '/docs/daily-workflow'},
+            {label: 'Cline Desktop Setup', to: '/docs/cline-desktop'},
             {label: 'Environment Variables', to: '/docs/env-vars'},
             {label: 'Persistence', to: '/docs/persistence'},
           ],

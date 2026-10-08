@@ -835,6 +835,29 @@ case "$IDLE_SECS" in ''|*[!0-9]*) IDLE_SECS=60;; esac
 # Never fire faster than 60s (matches Claude native hook timing).
 [ "$IDLE_SECS" -lt 60 ] && IDLE_SECS=60
 
+TMUX_SOCKET=""
+find_tmux_socket() {
+    if [ -n "$TMUX_SOCKET" ] && [ -S "$TMUX_SOCKET" ]; then
+        return 0
+    fi
+    local sock
+    sock=$(find /tmp -maxdepth 2 -name default -path '*/tmux-*' 2>/dev/null | head -n 1)
+    if [ -n "$sock" ] && [ -S "$sock" ]; then
+        TMUX_SOCKET="$sock"
+        return 0
+    fi
+    return 1
+}
+
+tmux() {
+    find_tmux_socket
+    if [ -n "$TMUX_SOCKET" ]; then
+        command tmux -S "$TMUX_SOCKET" "$@"
+    else
+        command tmux "$@"
+    fi
+}
+
 declare -A LAST_HASH
 declare -A LAST_CHANGE
 declare -A NOTIFIED
@@ -891,11 +914,12 @@ while true; do
                 [ -z "$ESCAPED" ] && ESCAPED='""'
                 TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
                 HOST=$(hostname 2>/dev/null || echo "claude-world")
-                curl -s --connect-timeout 10 --max-time 30 \
+                echo "[agent-idle-watcher] Agent ${AGENT_NAME} in pane ${pane} is idle (${SINCE}s). Sending webhook..."
+                HTTP_STATUS=$(curl -s -w "%{http_code}" -o /tmp/webhook-last-response.json --connect-timeout 10 --max-time 30 \
                     -X POST "$WEBHOOK_URL" \
                     -H "Content-Type: application/json" \
-                    -d "{\"event\":\"${AGENT_NAME}_idle\",\"agent\":\"$AGENT_NAME\",\"timestamp\":\"$TS\",\"hostname\":\"$HOST\",\"session_id\":\"${AGENT_NAME}:${pane}\",\"last_output\":$ESCAPED}" \
-                    > /dev/null 2>&1 &
+                    -d "{\"event\":\"${AGENT_NAME}_idle\",\"agent\":\"$AGENT_NAME\",\"timestamp\":\"$TS\",\"hostname\":\"$HOST\",\"session_id\":\"${AGENT_NAME}:${pane}\",\"last_output\":$ESCAPED}")
+                echo "[agent-idle-watcher] Webhook dispatched to ${WEBHOOK_URL} (HTTP status: ${HTTP_STATUS})"
             fi
         fi
     done < <(tmux list-panes -a -F '#{session_name}:#{window_index}.#{pane_index}' 2>/dev/null)
@@ -999,11 +1023,14 @@ for rcfile in /config/.bashrc /config/.zshrc; do
     sed -i '/^# >>> Claude World Auto-Launch/,/^# <<< Claude World Auto-Launch/d' "$rcfile" 2>/dev/null
     cat >> "$rcfile" << 'AUTOLAUNCH'
 # >>> Claude World Auto-Launch (written by init.sh — do not edit)
-# Only run in an interactive shell (skips non-interactive subshells and scripts)
+# Only run in an interactive shell with an attached terminal (skips subshells, scripts, and background helpers)
 case "$-" in
     *i*) ;;
     *) return 0 2>/dev/null || exit 0 ;;
 esac
+if [ -n "$BASH_EXECUTION_STRING" ] || [ ! -t 0 ] || [ ! -t 1 ]; then
+    return 0 2>/dev/null || exit 0
+fi
 
 # Clean up forwarded/stale tmux sockets from SSH client forwarding
 if [ -n "$TMUX" ] && [ ! -S "$(echo "$TMUX" | cut -d, -f1)" ]; then

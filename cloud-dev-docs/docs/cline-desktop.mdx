@@ -1,0 +1,206 @@
+---
+sidebar_position: 6
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Cline Desktop & Remote Environments
+
+Connect the official **Cline Desktop** GUI app (macOS, Windows, Linux) directly to your remote Claude-World container over SSH.
+
+This gives you a full desktop GUI with chat history, interactive diff reviews, and multi-model configuration, while all heavy builds, dependencies, and code execution remain isolated on your remote home server.
+
+---
+
+## Architecture & How It Works
+
+```
+┌─────────────────────────────────┐                 ┌─────────────────────────────────┐
+│          Your Computer          │                 │        Claude-World Server      │
+│                                 │                 │                                 │
+│  ┌───────────────────────────┐  │  SSH Port 2222  │  ┌───────────────────────────┐  │
+│  │       Cline Desktop       │──┼─────────────────┼─▶│       OpenSSH Server      │  │
+│  └─────────────┬─────────────┘  │                 │  └─────────────┬─────────────┘  │
+│                │                │                 │                ▼                │
+│                │                │                 │  ┌───────────────────────────┐  │
+│                │ (SSH Tunnel)   │                 │  │    cline-remote-helper    │  │
+│                ▼                │                 │  │       (Bun Hub Daemon)    │  │
+│         Local Port Forward      │                 │  └─────────────┬─────────────┘  │
+│        127.0.0.1:<random_port>  │◀────────────────┼────────────────┘ (WebSocket)    │
+└─────────────────────────────────┘                 └─────────────────────────────────┘
+```
+
+1. Cline Desktop initiates an SSH connection to port `2222` on your server using SSH key authentication.
+2. It installs and starts a small remote daemon (`cline-remote-helper`) inside `/config/.cline/remote/`.
+3. An encrypted SSH tunnel is established, bridging the local desktop app to the remote workspace daemon over a local WebSocket.
+
+---
+
+## Setup Guide
+
+### Step 1: Set Up Passwordless SSH Authentication
+
+Cline Desktop requires public-key authentication; password logins are not supported.
+
+<Tabs>
+  <TabItem value="mac-linux" label="macOS / Linux" default>
+
+```bash
+# 1. Generate an SSH key pair (if you don't already have one)
+ssh-keygen -t ed25519
+
+# 2. Copy your public key into the Claude-World container
+# Replace <SERVER_IP> with your server address (e.g., 192.168.1.41)
+ssh-copy-id -p 2222 claude@<SERVER_IP>
+
+# When prompted, enter your SUDO_PASSWORD (from compose.yaml)
+```
+
+  </TabItem>
+  <TabItem value="windows" label="Windows (PowerShell)">
+
+```powershell
+# 1. Generate an SSH key pair
+ssh-keygen -t ed25519
+
+# 2. Copy the public key into authorized_keys on the server
+cat ~/.ssh/id_ed25519.pub | ssh -p 2222 claude@<SERVER_IP> "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys"
+```
+
+  </TabItem>
+</Tabs>
+
+### Step 2: Verify SSH Key Access
+
+From your local terminal, verify that passwordless login works cleanly:
+
+```bash
+ssh -p 2222 claude@<SERVER_IP> "echo connection_ready"
+```
+
+If it prints `connection_ready` immediately without prompting for a password, your SSH setup is ready.
+
+### Step 3: Configure Cline Desktop
+
+1. Open **Cline Desktop**.
+2. Click the **Settings (gear icon)** in the top navigation.
+3. Select **Remote Environments** from the sidebar.
+4. Click **Add Environment** and fill in the details:
+
+| Field | Value | Example |
+|---|---|---|
+| **Name** | Any descriptive name | `claude-world` |
+| **SSH Host** | Hostname or IP of your server | `192.168.1.41` |
+| **User** | Container user (`claude` or `CUSTOM_USER`) | `claude` |
+| **Port** | Container external SSH port | `2222` |
+| **Identity File** | Path to your private key | `~/.ssh/id_ed25519` |
+
+5. Click **Test Connection**. The status should indicate **Available**.
+6. Click **Connect** (or select the environment in the top environment switcher).
+
+Your remote container environment is now connected and ready to run tasks!
+
+---
+
+## Troubleshooting & Common Issues
+
+### 1. `SyntaxError: Invalid character: '\0'` (Bun UPX Crash)
+
+#### Symptom
+When connecting, Cline Desktop fails with an error similar to:
+```text
+Unable to connect to SSH host
+Failed to run remote command /config/.cline/remote/cline-remote-helper-linux-x64-... (exit 1)
+SyntaxError: Invalid character: '\0'
+    at <parse> (/$bunfs/root/cline-remote-helper-x86_64-unknown-linux-gnu:2824:1)
+    at epc (unknown:1:1)
+    ...
+```
+
+#### Cause
+Cline Desktop bundles the Linux remote helper binary compressed with **UPX** to reduce file size. The helper is compiled with [Bun](https://bun.sh/). Bun single-file executables read and memory-map their own embedded bundle (`/$bunfs`) at runtime relative to the executable's end-of-file. When UPX decompresses in memory, Bun's internal re-execution and JSON IPC parsing reads null bytes (`\0`), triggering a fatal syntax error.
+
+#### Fix
+Decompress the helper binary directly inside the container using `upx`:
+
+```bash
+# Run on your server (or via SSH):
+sudo docker exec claude-world bash -c '
+  apt-get update && apt-get install -y upx-ucl
+  upx -d /config/.cline/remote/cline-remote-helper-linux-x64-*
+  chmod 755 /config/.cline/remote/cline-remote-helper-linux-x64-*
+  chown claude:claude /config/.cline/remote/cline-remote-helper-linux-x64-*
+'
+```
+
+:::tip Why this is permanent
+Cline Desktop executes `test -x <remoteHelper>` before uploading. Once the binary is decompressed in `/config/.cline/remote/`, Cline sees that an executable helper is already present and will **not** overwrite it with the broken UPX binary.
+:::
+
+---
+
+### 2. Connection Hangs or Spins Forever (tmux Auto-Launch Conflict)
+
+#### Symptom
+Connecting spins continuously on "Connecting to remote environment" or drops the connection abruptly.
+
+#### Cause
+Claude-World can be configured to auto-launch `tmux` and the CLI agent (`TMUX_AUTO=1`). When Cline Desktop launches the background helper, it executes `/bin/bash -i -l -c ...` to detect `$PATH`. If `.bashrc` launches `tmux` during this automated call, `tmux` fails because there is no attached terminal (TTY), outputting terminal escape sequences that break the IPC handshake.
+
+#### Fix
+Ensure your `.bashrc` auto-launch block only runs when an interactive TTY is present. Add this guard in `/config/.bashrc`:
+
+```bash
+# Only run auto-launch when a real terminal TTY is attached
+if [ -n "$BASH_EXECUTION_STRING" ] || [ ! -t 0 ] || [ ! -t 1 ]; then
+    return 0 2>/dev/null || exit 0
+fi
+```
+
+Claude-World's latest `init.sh` includes this guard automatically.
+
+---
+
+### 3. `Permission denied (publickey)` or Host Key Issues
+
+#### Symptom
+SSH rejects the key, or logs show:
+```text
+Authentication refused: bad ownership or modes for file /config/.ssh/authorized_keys
+```
+
+#### Cause
+OpenSSH requires strict permissions on the `.ssh` folder and parent directories. If host bind mounts set permissions to `775` or `777`, SSH will refuse the keys unless `StrictModes no` is configured.
+
+#### Fix
+1. Verify permissions on the `.ssh` directory inside the container:
+   ```bash
+   sudo docker exec claude-world bash -c '
+     chmod 700 /config/.ssh
+     chmod 600 /config/.ssh/authorized_keys
+     chown -R claude:claude /config/.ssh
+   '
+   ```
+2. Verify that `/etc/ssh/sshd_config` contains:
+   ```text
+   StrictModes no
+   PubkeyAuthentication yes
+   ```
+
+---
+
+### 4. Stale Upload Files or Zombie Daemons
+
+#### Symptom
+Cline Desktop reports that a helper upload timed out or failed to acquire a daemon lock.
+
+#### Fix
+Remove stale upload chunks and orphan discovery files:
+
+```bash
+sudo docker exec -u claude claude-world bash -c '
+  rm -f /config/.cline/remote/*.upload-*
+  rm -f /config/.cline/data/hub-discovery.json
+'
+```
