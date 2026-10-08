@@ -20,7 +20,7 @@ const sidebars: SidebarsConfig = {
     {
       type: 'category',
       label: 'Reference',
-      items: ['env-vars'],
+      items: ['env-vars', 'agent-config'],
     },
   ],
 };

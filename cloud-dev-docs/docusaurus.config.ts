@@ -95,6 +95,7 @@ const config: Config = {
             {label: 'Daily Workflow', to: '/docs/daily-workflow'},
             {label: 'Cline Desktop Setup', to: '/docs/cline-desktop'},
             {label: 'Environment Variables', to: '/docs/env-vars'},
+            {label: 'Agent Files (Instructions & Skills)', to: '/docs/agent-config'},
             {label: 'Persistence', to: '/docs/persistence'},
           ],
         },

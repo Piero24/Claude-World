@@ -150,6 +150,46 @@ CLINE_MODEL_3: deepseek/deepseek-r1
 - **Interactive switcher**: In the Cline terminal interface, open the provider settings menu to switch between any of your pre-configured profiles.
 - **Interactive login / OAuth**: Run `cline auth` inside the terminal at any time for providers requiring browser authentication or subscriptions. Existing profiles configured in `providers.json` are preserved across boots.
 
+## Cline Telegram Connector
+
+Chat with your Cline agent from Telegram. When enabled, `init.sh` starts the hub daemon and the Telegram bridge on every container boot. The connector registration lives in the hub DB (`/config/.cline/data/db/connectors.db`), so it survives rebuilds: the token only needs to be set once in `compose.yaml`.
+
+Only applies to `AGENT: cline`.
+
+| Env var | Default | What it does |
+|---------|---------|--------------|
+| `CLINE_TELEGRAM_TOKEN` | *(empty)* | Bot token from [@BotFather](https://t.me/BotFather). Empty disables the connector |
+| `CLINE_TELEGRAM_ALLOWED_USER_ID` | *(empty)* | Numeric Telegram user id (from [@userinfobot](https://t.me/userinfobot)). **Strongly recommended**: without it, anyone who finds your bot can run tasks on your machine |
+| `CLINE_TELEGRAM_BOT_USERNAME` | *(empty)* | Bot username override. Auto-detected from the token when empty |
+| `CLINE_TELEGRAM_CWD` | `/workplace` | Working directory for Telegram sessions |
+| `CLINE_TELEGRAM_TOOLS` | `on` | `on` or `off`. `off` adds `--no-tools` (chat only, no file/shell access) |
+
+### Setup
+
+1. In Telegram, chat with [@BotFather](https://t.me/BotFather): send `/newbot`, pick a display name and a unique username ending in `bot`, then copy the token it returns.
+2. Get your numeric user id from [@userinfobot](https://t.me/userinfobot).
+3. Set the values and recreate the container:
+
+```yaml
+AGENT: cline
+CLINE_TELEGRAM_TOKEN: "7123456789:AAH..."
+CLINE_TELEGRAM_ALLOWED_USER_ID: "224562648"
+```
+
+```bash
+docker compose up -d --force-recreate
+```
+
+4. Message your bot on Telegram to start a session.
+
+### Managing the connector
+
+Useful in-chat commands: `/clear` (fresh session), `/whereami` (session/thread id), `/tools`, `/yolo`, `/cwd <path>`, `/exit`.
+
+Logs: `/config/cline-telegram.log`. Inside the container you can also run `cline connect --stop telegram` or `cline doctor` (lists active and hub-supervised connectors).
+
+Removing `CLINE_TELEGRAM_TOKEN` and recreating the container disables the connector again.
+
 ## Git / GitHub
 
 | Env var | What it does |

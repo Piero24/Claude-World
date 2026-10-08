@@ -1,0 +1,65 @@
+---
+sidebar_position: 9
+---
+
+# Agent Files: Instructions & Skills
+
+On the **first boot**, `init.sh` writes two kinds of agent files into `/config`, depending on which agent you selected with `AGENT`:
+
+| File | Purpose |
+|------|---------|
+| **Global instructions** | Injected into every session automatically. Your standing rules. |
+| **`cleanup-merged` skill** | A skill you invoke on demand. Deletes merged branches and closes resolved issues. |
+
+Both use the [Agent Skills](https://agentskills.io) conventions, so the same content works with Claude Code, Cline, and Codex: only the location changes.
+
+## Where the files go
+
+The destination is picked automatically from `AGENT`:
+
+| `AGENT` | Global instructions (injected every session) | Skill (invoked on demand) |
+|---------|---------------------------------------------|---------------------------|
+| `claude` | `/config/.claude/CLAUDE.md` | `/config/.claude/skills/cleanup-merged/SKILL.md` |
+| `cline` | `/config/.cline/rules/claude-world.md` | `/config/.cline/skills/cleanup-merged/SKILL.md` |
+| `codex` | `/config/.codex/AGENTS.md` | `/config/.codex/skills/cleanup-merged/SKILL.md` |
+
+:::tip[A skill is a folder]
+A skill is a **folder** containing a `SKILL.md` file (for example `skills/cleanup-merged/SKILL.md`), with optional `scripts/`, `references/`, and `assets/` folders next to it.
+:::
+
+## Invoking the skill
+
+It is not automatic: ask the agent to run it (for example `run the cleanup-merged skill`), or use the agent's skill browser (`/skills` in Cline and Codex).
+
+## Customizing
+
+Both files are written **only once**, on the first boot. After that, edit them freely:
+
+```bash
+# Global instructions
+nano /config/.claude/CLAUDE.md                 # AGENT=claude
+nano /config/.cline/rules/claude-world.md      # AGENT=cline
+nano /config/.codex/AGENTS.md                  # AGENT=codex
+
+# Skill
+nano /config/.claude/skills/cleanup-merged/SKILL.md
+```
+
+To force regeneration, delete the file (or the skill folder) and recreate the container:
+
+```bash
+docker compose up -d --force-recreate
+```
+
+:::note[Switching agents]
+Files are **not** copied between agents. If you change `AGENT` from `claude` to `cline`, the files are created in the new agent's location, while your edits to the previous agent's files stay where they are.
+:::
+
+## Migrating from older versions
+
+Earlier versions wrote the skill as a single flat file (`/config/.claude/skills/cleanup-merged.md`). That layout is not a valid skill, so on the next boot `init.sh` moves it into the correct `cleanup-merged/SKILL.md` layout automatically, keeping your edits.
+
+## Related
+
+- [Environment Variables](./env-vars): the `AGENT` selector and every other configurable value
+- [Persistence](./persistence): what lives in `/config` and survives rebuilds

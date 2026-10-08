@@ -62,6 +62,19 @@ services:
       # CLINE_PROVIDER_3: openrouter
       # CLINE_API_KEY_3: ""
       # CLINE_MODEL_3: deepseek/deepseek-r1
+      # --- Cline Telegram Connector ---
+      # Chat with your agent from Telegram. Set the bot token (from @BotFather)
+      # to enable it: init.sh starts the hub + connector on every boot, and the
+      # registration persists in /config (survives rebuilds).
+      # STRONGLY recommended: set CLINE_TELEGRAM_ALLOWED_USER_ID (your numeric
+      # Telegram id from @userinfobot) or anyone who finds the bot can run tasks.
+      CLINE_TELEGRAM_TOKEN: ""
+      CLINE_TELEGRAM_ALLOWED_USER_ID: ""
+      # Optional bot username override (auto-detected from the token if empty).
+      CLINE_TELEGRAM_BOT_USERNAME: ""
+      # Working directory for Telegram sessions, and whether tools are enabled.
+      CLINE_TELEGRAM_CWD: /workplace
+      CLINE_TELEGRAM_TOOLS: "on"
       GIT_USER_NAME: CHANGE_ME_GIT_NAME
       GIT_USER_EMAIL: CHANGE_ME_GIT_EMAIL
       GITHUB_TOKEN: CHANGE_ME_GITHUB_TOKEN

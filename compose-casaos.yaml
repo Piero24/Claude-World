@@ -50,6 +50,16 @@ services:
       CLINE_API_KEY: ""
       CLINE_PROVIDER: anthropic
       CLINE_MODEL: ""
+      # --- Cline Telegram Connector ---
+      # Set CLINE_TELEGRAM_TOKEN (from @BotFather) to chat with your agent from
+      # Telegram. init.sh starts the hub + connector on every boot.
+      # STRONGLY recommended: CLINE_TELEGRAM_ALLOWED_USER_ID (numeric id from
+      # @userinfobot) or anyone who finds the bot can run tasks.
+      CLINE_TELEGRAM_TOKEN: ""
+      CLINE_TELEGRAM_ALLOWED_USER_ID: ""
+      CLINE_TELEGRAM_BOT_USERNAME: ""
+      CLINE_TELEGRAM_CWD: /workplace
+      CLINE_TELEGRAM_TOOLS: "on"
       GIT_USER_NAME: CHANGE_ME_GIT_NAME
       GIT_USER_EMAIL: CHANGE_ME_GIT_EMAIL
       GITHUB_TOKEN: CHANGE_ME_GITHUB_TOKEN
@@ -112,6 +122,21 @@ services:
         - container: CLINE_MODEL
           description:
             en_us: "Primary Cline model override. Falls back to AGENT_MODEL if empty. Set CLINE_MODEL_2, etc. for secondary providers."
+        - container: CLINE_TELEGRAM_TOKEN
+          description:
+            en_us: "Telegram bot token from @BotFather. Enables the Telegram connector (AGENT=cline only). Leave empty to disable."
+        - container: CLINE_TELEGRAM_ALLOWED_USER_ID
+          description:
+            en_us: "Numeric Telegram user id (from @userinfobot) allowed to use the bot. Strongly recommended: without it anyone who finds the bot can run tasks on your machine."
+        - container: CLINE_TELEGRAM_BOT_USERNAME
+          description:
+            en_us: "Optional Telegram bot username override. Auto-detected from the token when empty."
+        - container: CLINE_TELEGRAM_CWD
+          description:
+            en_us: "Working directory for Telegram sessions. Default: /workplace."
+        - container: CLINE_TELEGRAM_TOOLS
+          description:
+            en_us: "on or off. off adds --no-tools so Telegram sessions can chat but not touch files or run commands."
         - container: GITHUB_TOKEN
           description:
             en_us: "GitHub fine-grained PAT (Settings → Developer settings → Personal access tokens)."

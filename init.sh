@@ -578,17 +578,24 @@ PYEOF
     fi
 fi
 
-# ---- Claude Code CLAUDE.md (only when AGENT=claude) ----
-# Global instructions injected into every prompt.
-# Written on first boot ONLY — edit /config/.claude/CLAUDE.md to customize.
+# ---- Agent global instructions (injected into every session) ----
+# Global instructions injected into every prompt/session.
+# Written on first boot ONLY — edit the file to customize.
 # To force regeneration, delete the file and restart the container.
-if [ "$AGENT" = "claude" ]; then
-CLAUDE_MD="/config/.claude/CLAUDE.md"
-if [ ! -f "$CLAUDE_MD" ]; then
-    echo "[claude-world] Creating Claude Code CLAUDE.md with global instructions..."
-    mkdir -p /config/.claude
-    cat > "$CLAUDE_MD" << 'CLAUDE_MD_EOF'
-# CLAUDE.md — Global Instructions
+# Destination depends on the selected agent:
+#   claude → /config/.claude/CLAUDE.md
+#   cline  → /config/.cline/rules/claude-world.md
+#   codex  → /config/.codex/AGENTS.md
+case "$AGENT" in
+    claude) AGENT_INSTRUCTIONS="/config/.claude/CLAUDE.md" ;;
+    cline)  AGENT_INSTRUCTIONS="/config/.cline/rules/claude-world.md" ;;
+    codex)  AGENT_INSTRUCTIONS="/config/.codex/AGENTS.md" ;;
+esac
+if [ ! -f "$AGENT_INSTRUCTIONS" ]; then
+    echo "[claude-world] Creating global instructions for '$AGENT' ($AGENT_INSTRUCTIONS)..."
+    mkdir -p "$(dirname "$AGENT_INSTRUCTIONS")"
+    cat > "$AGENT_INSTRUCTIONS" << 'CLAUDE_MD_EOF'
+# Global Instructions — Claude World
 
 ## Communication Style
 - Do not use "-" in normal paragraphs. It must be avoided.
@@ -622,12 +629,11 @@ if [ ! -f "$CLAUDE_MD" ]; then
 - Always use a virtual environment for package installation (Python venv, Node nvm, etc.).
 - Never install packages globally at the OS level (`pip install`, `npm install -g`, etc.).
 CLAUDE_MD_EOF
-    chown "$USER:$USER" "$CLAUDE_MD"
-    echo "[claude-world] CLAUDE.md created (edit /config/.claude/CLAUDE.md to customize)"
+    chown "$USER:$USER" "$AGENT_INSTRUCTIONS"
+    echo "[claude-world] Global instructions created (edit $AGENT_INSTRUCTIONS to customize)"
 else
-    echo "[claude-world] CLAUDE.md already exists, skipping."
+    echo "[claude-world] Global instructions already exist ($AGENT_INSTRUCTIONS), skipping."
 fi
-fi # end AGENT=claude gate for CLAUDE.md
 
 # ---- Claude Code settings.json (only when AGENT=claude: permissions + autonomy) ----
 # Written on first boot ONLY — edit /config/.claude/settings.json to customize.
@@ -936,14 +942,32 @@ if [ "$AGENT" != "claude" ] && [ -n "$EFFECTIVE_WEBHOOK_URL" ] && [ "$EFFECTIVE_
     fi
 fi
 
-# ---- cleanup-merged skill (only when AGENT=claude) ----
-# Written on first boot ONLY — edit /config/.claude/skills/cleanup-merged.md to customize.
-# To force regeneration, delete the file and restart the container.
-if [ "$AGENT" = "claude" ]; then
-CLEANUP_SKILL="/config/.claude/skills/cleanup-merged.md"
+# ---- cleanup-merged skill (path depends on AGENT) ----
+# Agent Skills standard: a folder containing SKILL.md (name + description).
+# Written on first boot ONLY — edit SKILL.md to customize.
+# To force regeneration, delete the folder and restart the container.
+# Destination depends on the selected agent:
+#   claude → /config/.claude/skills/cleanup-merged/SKILL.md
+#   cline  → /config/.cline/skills/cleanup-merged/SKILL.md
+#   codex  → /config/.codex/skills/cleanup-merged/SKILL.md
+case "$AGENT" in
+    claude) CLEANUP_SKILL_DIR="/config/.claude/skills/cleanup-merged" ;;
+    cline)  CLEANUP_SKILL_DIR="/config/.cline/skills/cleanup-merged" ;;
+    codex)  CLEANUP_SKILL_DIR="/config/.codex/skills/cleanup-merged" ;;
+esac
+CLEANUP_SKILL="$CLEANUP_SKILL_DIR/SKILL.md"
+
+# Migrate the legacy flat-file layout (skills/cleanup-merged.md) if present
+LEGACY_CLEANUP_SKILL="${CLEANUP_SKILL_DIR%/*}/cleanup-merged.md"
+if [ -f "$LEGACY_CLEANUP_SKILL" ] && [ ! -f "$CLEANUP_SKILL" ]; then
+    echo "[claude-world] Migrating legacy cleanup-merged.md to SKILL.md layout..."
+    mkdir -p "$CLEANUP_SKILL_DIR"
+    mv "$LEGACY_CLEANUP_SKILL" "$CLEANUP_SKILL"
+fi
+
 if [ ! -f "$CLEANUP_SKILL" ]; then
-    echo "[claude-world] Creating cleanup-merged skill..."
-    mkdir -p /config/.claude/skills
+    echo "[claude-world] Creating cleanup-merged skill for '$AGENT'..."
+    mkdir -p "$CLEANUP_SKILL_DIR"
     cat > "$CLEANUP_SKILL" << 'CLEANUP_SKILL_EOF'
 ---
 name: cleanup-merged
@@ -988,12 +1012,11 @@ done
 ### 6. Report summary
 Print how many local branches, remote branches, and issues were cleaned up.
 CLEANUP_SKILL_EOF
-    chown "$USER:$USER" "$CLEANUP_SKILL"
-    echo "[claude-world] cleanup-merged skill created (edit /config/.claude/skills/cleanup-merged.md to customize)"
+    chown -R "$USER:$USER" "$CLEANUP_SKILL_DIR"
+    echo "[claude-world] cleanup-merged skill created (edit $CLEANUP_SKILL to customize)"
 else
     echo "[claude-world] cleanup-merged skill already exists, skipping."
 fi
-fi # end AGENT=claude gate for cleanup-merged skill
 
 # ---- Git / GitHub config (from Compose env) ----
 if [ -n "${GIT_USER_NAME}" ] && [ "${GIT_USER_NAME}" != "CHANGE_ME_GIT_NAME" ]; then
@@ -1049,6 +1072,116 @@ AUTOLAUNCH
     # Inject the selected agent binary (AGENT_BIN is resolved at boot time)
     sed -i "s/__AGENT_BIN__/${AGENT_BIN:-claude}/" "$rcfile"
 done
+
+# ---- Cline connector: Telegram bridge (AGENT=cline only) ----
+# When CLINE_TELEGRAM_TOKEN is set in compose.yaml, start the hub daemon and
+# bring the Telegram connector up on every boot. The registration itself lives
+# in the hub DB (/config/.cline/data/db/connectors.db), so it survives rebuilds:
+# this block only has to re-attach the connector after a restart.
+# Empty token (or CHANGE_ME_*) disables the feature.
+_EFFECTIVE_TELEGRAM_TOKEN="${CLINE_TELEGRAM_TOKEN:-${TELEGRAM_BOT_TOKEN:-}}"
+case "$_EFFECTIVE_TELEGRAM_TOKEN" in
+    ""|CHANGE_ME_*) _EFFECTIVE_TELEGRAM_TOKEN="" ;;
+esac
+TELEGRAM_STATE="/config/.cline/.telegram-connector.state"
+
+if [ "$AGENT" = "cline" ]; then
+if [ -n "$_EFFECTIVE_TELEGRAM_TOKEN" ]; then
+    TELEGRAM_CWD="${CLINE_TELEGRAM_CWD:-/workplace}"
+    TELEGRAM_TOOLS="${CLINE_TELEGRAM_TOOLS:-on}"
+
+    # Helper: bring up hub + connector as the container user. Kept out of the
+    # init process so it can run detached and log on its own.
+    cat > /usr/local/bin/cline-telegram-start.sh << 'TELEGRAMSTART'
+#!/bin/bash
+# ================================================================
+# cline-telegram-start.sh — bring up the Cline hub + Telegram connector
+# Runs as the container user (HOME=/config) so it shares the CLI state
+# (providers.json, hub DB) written by init.sh.
+# Env: CLINE_TELEGRAM_TOKEN, CLINE_TELEGRAM_ALLOWED_USER_ID,
+#      CLINE_TELEGRAM_BOT_USERNAME, CLINE_TELEGRAM_CWD, CLINE_TELEGRAM_TOOLS
+# ================================================================
+set -u
+
+export HOME=/config
+export NVM_DIR="/config/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+export PATH="/config/.npm-global/bin:$PATH"
+
+LOG="/config/cline-telegram.log"
+touch "$LOG" 2>/dev/null || LOG="/tmp/cline-telegram.log"
+STATE="/config/.cline/.telegram-connector.state"
+
+log() { echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $*" >> "$LOG"; }
+
+TOKEN="${CLINE_TELEGRAM_TOKEN:-}"
+if [ -z "$TOKEN" ]; then
+    log "no CLINE_TELEGRAM_TOKEN set, skipping"
+    exit 0
+fi
+if ! command -v cline >/dev/null 2>&1; then
+    log "cline binary not found on PATH, skipping"
+    exit 0
+fi
+
+# Connector arguments. NOTE: no -i, so the connector detaches and the hub
+# supervises/restarts it. Sessions run in CLINE_TELEGRAM_CWD (default /workplace).
+ARGS=(telegram -k "$TOKEN")
+[ -n "${CLINE_TELEGRAM_BOT_USERNAME:-}" ] && ARGS+=(-m "$CLINE_TELEGRAM_BOT_USERNAME")
+[ -n "${CLINE_TELEGRAM_ALLOWED_USER_ID:-}" ] && ARGS+=(--allowed-user-id "$CLINE_TELEGRAM_ALLOWED_USER_ID")
+ARGS+=(--cwd "${CLINE_TELEGRAM_CWD:-/workplace}")
+case "${CLINE_TELEGRAM_TOOLS:-on}" in
+    off|false|0) ARGS+=(--no-tools) ;;
+esac
+
+# 1. Ensure the hub daemon is running (it owns and supervises connectors)
+log "starting hub daemon"
+cline hub start >> "$LOG" 2>&1 || true
+sleep 2
+
+# 2. Register on first boot, re-attach (restart) on later boots
+if [ -f "$STATE" ]; then
+    log "re-attaching telegram connector (--restart)"
+    cline connect --restart "${ARGS[@]}" >> "$LOG" 2>&1 || log "restart failed"
+else
+    log "registering telegram connector (first run)"
+    if cline connect "${ARGS[@]}" >> "$LOG" 2>&1; then
+        touch "$STATE" 2>/dev/null || true
+    else
+        log "connect failed"
+    fi
+fi
+
+log "telegram connector launch finished"
+TELEGRAMSTART
+    chmod +x /usr/local/bin/cline-telegram-start.sh
+
+    # Escape values for single-quoted embedding in the su command below.
+    # Inside single quotes everything is literal, so only ' needs escaping.
+    _tg_esc() { printf '%s' "$1" | sed "s/'/'\\\\''/g"; }
+    _TG_TOKEN="$(_tg_esc "$_EFFECTIVE_TELEGRAM_TOKEN")"
+    _TG_USER="$(_tg_esc "${CLINE_TELEGRAM_ALLOWED_USER_ID:-}")"
+    _TG_BOT="$(_tg_esc "${CLINE_TELEGRAM_BOT_USERNAME:-}")"
+    _TG_CWD="$(_tg_esc "$TELEGRAM_CWD")"
+    _TG_TOOLS="$(_tg_esc "$TELEGRAM_TOOLS")"
+
+    # Launch in the background as the container user (mirrors the ttyd pattern)
+    su - "$USER" -c "export HOME=/config && export CLINE_TELEGRAM_TOKEN='${_TG_TOKEN}' && export CLINE_TELEGRAM_ALLOWED_USER_ID='${_TG_USER}' && export CLINE_TELEGRAM_BOT_USERNAME='${_TG_BOT}' && export CLINE_TELEGRAM_CWD='${_TG_CWD}' && export CLINE_TELEGRAM_TOOLS='${_TG_TOOLS}' && nohup /usr/local/bin/cline-telegram-start.sh > /dev/null 2>&1 &"
+
+    if [ -n "${CLINE_TELEGRAM_ALLOWED_USER_ID:-}" ]; then
+        echo "[claude-world] Telegram connector: enabled (allowed user ${CLINE_TELEGRAM_ALLOWED_USER_ID}, cwd ${TELEGRAM_CWD})"
+    else
+        echo "[claude-world] WARNING: Telegram connector enabled with NO allowed user id — anyone who finds the bot can drive the agent. Set CLINE_TELEGRAM_ALLOWED_USER_ID in compose.yaml."
+    fi
+elif [ -f "$TELEGRAM_STATE" ]; then
+    # Token removed from compose.yaml → disable the previously enabled connector
+    echo "[claude-world] Telegram connector: token removed — disabling."
+    su - "$USER" -c "export HOME=/config && export NVM_DIR=/config/.nvm && [ -s \"\$NVM_DIR/nvm.sh\" ] && . \"\$NVM_DIR/nvm.sh\" && cline hub start >/dev/null 2>&1; cline connect --stop telegram" >> /config/cline-telegram.log 2>&1 || true
+    rm -f "$TELEGRAM_STATE"
+else
+    echo "[claude-world] Telegram connector: disabled (set CLINE_TELEGRAM_TOKEN in compose.yaml to enable)."
+fi
+fi # end AGENT=cline gate for the Telegram connector
 
 # ---- tmux aliases ----
 add_line 'alias ta="tmux new -A -s main"' /config/.bashrc
