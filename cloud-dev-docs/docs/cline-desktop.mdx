@@ -188,6 +188,24 @@ OpenSSH requires strict permissions on the `.ssh` folder and parent directories.
    PubkeyAuthentication yes
    ```
 
+#### `REMOTE HOST IDENTIFICATION HAS CHANGED!`
+
+```text
+WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!
+Offending ED25519 key in ~/.ssh/known_hosts:11
+Host key verification failed.
+```
+
+Older versions regenerated the container's SSH host keys on every rebuild, so your client saw a "changed" fingerprint after each `docker compose up --force-recreate`. Current `init.sh` persists them in `/config/.ssh/host_keys`, so the fingerprint is now stable.
+
+If you hit it, remove the stale entry once and reconnect:
+
+```bash
+# Quote the target and include the port: for non-default ports the
+# known_hosts entry is stored as [host]:port
+ssh-keygen -R "[<SERVER_IP>]:2222"
+```
+
 ---
 
 ### 4. Stale Upload Files or Zombie Daemons

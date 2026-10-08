@@ -319,8 +319,42 @@ else
     echo "[claude-world] WARNING: SUDO_PASSWORD is still the placeholder — SSH password NOT set!"
 fi
 
+# ---- Persist SSH host keys (stable fingerprint across container rebuilds) ----
+# /etc/ssh lives in the image layer, so the baseimage regenerates host keys on
+# every recreate and SSH clients warn "REMOTE HOST IDENTIFICATION HAS CHANGED".
+# Keep the identity in /config so it survives rebuilds.
+SSH_KEY_STORE="/config/.ssh/host_keys"
+mkdir -p "$SSH_KEY_STORE"
+for _kt in rsa ecdsa ed25519; do
+    _store="$SSH_KEY_STORE/ssh_host_${_kt}_key"
+    _live="/etc/ssh/ssh_host_${_kt}_key"
+    if [ -f "$_store" ]; then
+        # Restore the persisted identity
+        cp -f "$_store" "$_live" 2>/dev/null || true
+    elif [ -f "$_live" ]; then
+        # First boot: keep the key the baseimage already generated
+        cp -f "$_live" "$_store" 2>/dev/null || true
+    else
+        ssh-keygen -q -N '' -t "$_kt" -f "$_store" 2>/dev/null || true
+        [ -f "$_store" ] && cp -f "$_store" "$_live" 2>/dev/null || true
+    fi
+done
+chmod 600 /etc/ssh/ssh_host_*_key 2>/dev/null || true
+chown -R "$USER:$USER" "$SSH_KEY_STORE" 2>/dev/null || true
+echo "[claude-world] SSH host keys persisted in $SSH_KEY_STORE (stable fingerprint)"
+
 service ssh start
 echo "[claude-world] SSH server started."
+
+# ---- Ensure /config is owned by the container user (early) ----
+# The bind mount can arrive root-owned (e.g. created by a root/CasaOS installer),
+# which makes every `su - "$USER"` step below fail: nvm, npm, git config, agent
+# CLIs. The `chown -R` near the end of this script is too late for those, so fix
+# it here. Only when needed, to avoid a recursive chown on every boot.
+if [ "$(stat -c '%u' /config 2>/dev/null || echo 0)" != "$(id -u "$USER")" ]; then
+    echo "[claude-world] /config is not owned by '$USER' — fixing ownership (may take a while)..."
+    chown -R "$USER:$USER" /config
+fi
 
 # ---- nvm + Node LTS (persists to /config/.nvm) ----
 if [ ! -d /config/.nvm ]; then
@@ -329,6 +363,12 @@ if [ ! -d /config/.nvm ]; then
     su - "$USER" -c 'export HOME=/config && export NVM_DIR="/config/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && nvm install --lts'
 else
     echo "[claude-world] nvm already installed, skipping."
+fi
+
+# Fail loudly instead of silently skipping every agent install below.
+if [ ! -d /config/.nvm ]; then
+    echo "[claude-world] ERROR: nvm/Node are missing — agent CLIs will NOT be installed."
+    echo "[claude-world] ERROR: check that /config is writable by '$USER', then reboot."
 fi
 
 # ---- npm global prefix → /config (env var, not .npmrc — avoids nvm conflict) ----
@@ -1310,7 +1350,38 @@ if [ -z "${PASEO_PASSWORD:-}" ]; then
 fi
 
 log "starting daemon (listen=${PASEO_LISTEN:-0.0.0.0:6767} webUI=${PASEO_WEB_UI_ENABLED:-1} relay=${PASEO_RELAY_ENABLED:-0})"
-exec paseo daemon run >> "$LOG" 2>&1
+paseo daemon run >> "$LOG" 2>&1 &
+_PASEO_DAEMON_PID=$!
+
+# Wait for the daemon to answer before talking to it
+for _i in $(seq 1 60); do
+    sleep 2
+    paseo project ls >/dev/null 2>&1 && break
+done
+
+# Paseo does not auto-discover directories, so register every folder under the
+# workspace as its own project and keep rescanning: a repo cloned later shows up
+# in the sidebar on its own, with no restart and no manual step.
+_PASEO_WORKSPACE="${PASEO_WORKSPACE:-/workplace}"
+while kill -0 "$_PASEO_DAEMON_PID" 2>/dev/null; do
+    _known="$(paseo project ls --json 2>/dev/null)"
+    for _d in "$_PASEO_WORKSPACE"/*/; do
+        [ -d "$_d" ] || continue
+        _p="${_d%/}"
+        # skip dotdirs and dependency folders
+        case "$(basename "$_p")" in .*|node_modules) continue ;; esac
+        case "$_known" in
+            *"\"$_p\""*) ;;
+            *)
+                log "registering project $_p"
+                paseo project create "$_p" >> "$LOG" 2>&1 || log "project create failed for $_p"
+                ;;
+        esac
+    done
+    sleep 300
+done
+
+wait "$_PASEO_DAEMON_PID"
 PASEOSTART
     chmod +x /usr/local/bin/paseo-start.sh
 

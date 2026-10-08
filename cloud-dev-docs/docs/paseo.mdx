@@ -77,6 +77,20 @@ paseo run --provider cline "fix the failing tests"
 
 Logs: `/config/paseo.log`.
 
+## Projects and sessions
+
+Paseo does not auto-discover directories, so `init.sh` registers **every folder under `/workplace`** as its own project and rescans every 5 minutes. Clone a new repo and it appears in the sidebar on its own — no restart, no manual step. Dotfiles and `node_modules` are skipped.
+
+Manage them from inside the container:
+
+```bash
+paseo project ls
+paseo project create /path/to/repo      # outside /workplace
+paseo project delete <project-id>
+```
+
+Paseo is organized around workspaces, and it only tracks the sessions **it** starts. Sessions you began from the terminal/SSH (the auto-launched agent in tmux) are **not** imported and will not appear in Paseo. To see a task in Paseo, start it from Paseo (`paseo run`, or the app), or open a terminal inside the workspace.
+
 ## Files
 
 | Path | Purpose |
