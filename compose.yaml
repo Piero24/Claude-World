@@ -75,6 +75,10 @@ services:
       # Working directory for Telegram sessions, and whether tools are enabled.
       CLINE_TELEGRAM_CWD: /workplace
       CLINE_TELEGRAM_TOOLS: "on"
+      # Optional full system prompt override for Telegram sessions (--system).
+      # Leave empty to use the connector default plus the shipped Telegram
+      # brevity rule (written by init.sh into CLINE_TELEGRAM_CWD).
+      CLINE_TELEGRAM_SYSTEM: ""
       # --- Paseo (remote / mobile control plane) ---
       # Drive your agents from a phone, browser or the desktop app.
       # Enables the daemon on port 6767 + the bundled web UI, and installs every

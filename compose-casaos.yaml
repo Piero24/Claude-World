@@ -60,6 +60,7 @@ services:
       CLINE_TELEGRAM_BOT_USERNAME: ""
       CLINE_TELEGRAM_CWD: /workplace
       CLINE_TELEGRAM_TOOLS: "on"
+      CLINE_TELEGRAM_SYSTEM: ""
       # --- Paseo (remote / mobile control plane) ---
       # Drive your agents from a phone, browser or the desktop app.
       # Enables the daemon on port 6767 + the bundled web UI, and installs every
@@ -148,6 +149,9 @@ services:
         - container: CLINE_TELEGRAM_TOOLS
           description:
             en_us: "on or off. off adds --no-tools so Telegram sessions can chat but not touch files or run commands."
+        - container: CLINE_TELEGRAM_SYSTEM
+          description:
+            en_us: "Optional full system prompt override for Telegram sessions. Empty keeps the connector default plus the shipped Telegram brevity rule."
         - container: PASEO_ENABLED
           description:
             en_us: "Enable the Paseo daemon (remote/mobile control plane) on port 6767. 1 to enable, 0 to disable."

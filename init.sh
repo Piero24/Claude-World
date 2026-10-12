@@ -196,6 +196,7 @@ REQUIRED_PACKAGES=(
     curl
     wget
     docker.io
+    docker-compose-v2
     tmux
     zsh
     nano
@@ -212,7 +213,8 @@ fi
 
 # ---- Docker-in-Docker: run a docker daemon inside the container ----
 # The container gets its OWN isolated docker daemon — no host socket mount.
-# docker.io is already installed via REQUIRED_PACKAGES above.
+# docker.io and the compose plugin (docker-compose-v2) are installed via
+# REQUIRED_PACKAGES above, so `docker compose` works against this daemon.
 if command -v dockerd >/dev/null 2>&1; then
     if ! pgrep -f "dockerd" >/dev/null 2>&1; then
         echo "[claude-world] Starting Docker daemon inside container (DinD)..."
@@ -1138,6 +1140,23 @@ if [ -n "$_EFFECTIVE_TELEGRAM_TOKEN" ]; then
     TELEGRAM_CWD="${CLINE_TELEGRAM_CWD:-/workplace}"
     TELEGRAM_TOOLS="${CLINE_TELEGRAM_TOOLS:-on}"
 
+    # Reply style for Telegram sessions ONLY. Rule discovery is per workspace
+    # root (no parent walk), so placing it in CLINE_TELEGRAM_CWD scopes it to
+    # connector sessions and leaves interactive CLI/Paseo sessions untouched.
+    mkdir -p "$TELEGRAM_CWD/.cline/rules" 2>/dev/null || true
+    cat > "$TELEGRAM_CWD/.cline/rules/telegram-brevity.md" << 'TELEGRAMRULE'
+# Reply style (Telegram)
+
+Keep every reply compact by default:
+- First line: the direct answer or result. No preamble ("Sure", "Great question"), never restate the request.
+- Conversational answers: at most 3-6 short bullets, around 100 words, unless detail is requested.
+- Formatting: *bold* for key numbers, `inline code` for paths/commands, "-" bullets. No headings, tables or horizontal rules.
+- While working: one short line per milestone; end with a short summary, never a full activity log.
+- Coding tasks: make the change, confirm in 1-2 lines, explain reasoning only when asked.
+- Tool loops: do not re-read files you already saw, batch related commands, stop as soon as the goal is met.
+TELEGRAMRULE
+    chown "$USER" "$TELEGRAM_CWD/.cline/rules/telegram-brevity.md" 2>/dev/null || true
+
     # Helper: bring up hub + connector as the container user. Kept out of the
     # init process so it can run detached and log on its own.
     cat > /usr/local/bin/cline-telegram-start.sh << 'TELEGRAMSTART'
@@ -1147,7 +1166,8 @@ if [ -n "$_EFFECTIVE_TELEGRAM_TOKEN" ]; then
 # Runs as the container user (HOME=/config) so it shares the CLI state
 # (providers.json, hub DB) written by init.sh.
 # Env: CLINE_TELEGRAM_TOKEN, CLINE_TELEGRAM_ALLOWED_USER_ID,
-#      CLINE_TELEGRAM_BOT_USERNAME, CLINE_TELEGRAM_CWD, CLINE_TELEGRAM_TOOLS
+#      CLINE_TELEGRAM_BOT_USERNAME, CLINE_TELEGRAM_CWD, CLINE_TELEGRAM_TOOLS,
+#      CLINE_TELEGRAM_SYSTEM
 # ================================================================
 set -u
 
@@ -1181,11 +1201,22 @@ ARGS+=(--cwd "${CLINE_TELEGRAM_CWD:-/workplace}")
 case "${CLINE_TELEGRAM_TOOLS:-on}" in
     off|false|0) ARGS+=(--no-tools) ;;
 esac
+# Optional: full system prompt override for connector sessions (--system).
+# Leave empty to keep the connector default plus the global rules.
+[ -n "${CLINE_TELEGRAM_SYSTEM:-}" ] && ARGS+=(--system "$CLINE_TELEGRAM_SYSTEM")
 
 # 1. Ensure the hub daemon is running (it owns and supervises connectors)
 log "starting hub daemon"
 cline hub start >> "$LOG" 2>&1 || true
 sleep 2
+
+# 1.5. Clear stale thread bindings: sessions can be deleted by hub cleanup
+# while a chat is still bound to them; the next message then fails with
+# "Cannot persist messages for unknown session". Stripping the dead session id
+# keeps the chat identity and lets the connector start a fresh session quietly.
+if [ -x /usr/local/bin/cline-telegram-heal.sh ]; then
+    /usr/local/bin/cline-telegram-heal.sh || true
+fi
 
 # 2. Register on first boot, re-attach (restart) on later boots
 if [ -f "$STATE" ]; then
@@ -1201,8 +1232,66 @@ else
 fi
 
 log "telegram connector launch finished"
+
+# 3. Periodically clear stale bindings (sessions can be deleted mid-run)
+if ! pgrep -f cline-telegram-heal-loop >/dev/null 2>&1; then
+    nohup bash -c 'while :; do sleep 300; /usr/local/bin/cline-telegram-heal.sh >/dev/null 2>&1 || :; done # cline-telegram-heal-loop' >/dev/null 2>&1 &
+fi
 TELEGRAMSTART
     chmod +x /usr/local/bin/cline-telegram-start.sh
+
+    # Companion for the start script: drop dead session ids from thread
+    # bindings so a deleted session never surfaces as a bridge error in chat.
+    cat > /usr/local/bin/cline-telegram-heal.sh << 'HEAL'
+#!/bin/bash
+# cline-telegram-heal.sh — remove sessionIds from Telegram thread bindings
+# when the referenced session no longer exists in the hub database. Without
+# this, the first message after a session cleanup fails with
+# "Telegram bridge error: Cannot persist messages for unknown session".
+set -u
+CONNECTOR_DIR="${CLINE_HEAL_CONNECTOR_DIR:-/config/.cline/data/connectors/telegram}"
+DB="${CLINE_HEAL_DB:-/config/.cline/data/db/sessions.db}"
+LOG="${CLINE_HEAL_LOG:-/config/cline-telegram.log}"
+log() { echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [heal] $*" >> "$LOG"; }
+_out="$(python3 - "$CONNECTOR_DIR" "$DB" 2>&1 <<'PY'
+import glob, json, os, sqlite3, sys, tempfile
+connector_dir, db_path = sys.argv[1], sys.argv[2]
+if not os.path.exists(db_path):
+    sys.exit(0)
+con = sqlite3.connect(db_path)
+for path in sorted(glob.glob(os.path.join(connector_dir, '*.threads.json'))):
+    try:
+        with open(path) as f:
+            data = json.load(f)
+    except Exception:
+        continue
+    dirty = False
+    for entry in data.values():
+        if not isinstance(entry, dict):
+            continue
+        sid = entry.get('sessionId')
+        if not sid:
+            continue
+        if con.execute('select 1 from sessions where session_id=?', (sid,)).fetchone():
+            continue
+        entry.pop('sessionId', None)
+        state = entry.get('state')
+        if isinstance(state, dict):
+            state.pop('sessionId', None)
+        dirty = True
+        print('cleared stale sessionId %s from %s' % (sid, os.path.basename(path)))
+    if dirty:
+        fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path))
+        with os.fdopen(fd, 'w') as f:
+            json.dump(data, f)
+        os.replace(tmp, path)
+PY
+)" || { log "binding heal failed: $_out"; exit 0; }
+if [ -n "$_out" ]; then
+    while IFS= read -r line; do log "$line"; done <<< "$_out"
+fi
+HEAL
+    chmod +x /usr/local/bin/cline-telegram-heal.sh
 
     # Escape values for single-quoted embedding in the su command below.
     # Inside single quotes everything is literal, so only ' needs escaping.
@@ -1212,9 +1301,10 @@ TELEGRAMSTART
     _TG_BOT="$(_tg_esc "${CLINE_TELEGRAM_BOT_USERNAME:-}")"
     _TG_CWD="$(_tg_esc "$TELEGRAM_CWD")"
     _TG_TOOLS="$(_tg_esc "$TELEGRAM_TOOLS")"
+    _TG_SYSTEM="$(_tg_esc "${CLINE_TELEGRAM_SYSTEM:-}")"
 
     # Launch in the background as the container user (mirrors the ttyd pattern)
-    su - "$USER" -c "export HOME=/config && export CLINE_TELEGRAM_TOKEN='${_TG_TOKEN}' && export CLINE_TELEGRAM_ALLOWED_USER_ID='${_TG_USER}' && export CLINE_TELEGRAM_BOT_USERNAME='${_TG_BOT}' && export CLINE_TELEGRAM_CWD='${_TG_CWD}' && export CLINE_TELEGRAM_TOOLS='${_TG_TOOLS}' && nohup /usr/local/bin/cline-telegram-start.sh > /dev/null 2>&1 &"
+    su - "$USER" -c "export HOME=/config && export CLINE_TELEGRAM_TOKEN='${_TG_TOKEN}' && export CLINE_TELEGRAM_ALLOWED_USER_ID='${_TG_USER}' && export CLINE_TELEGRAM_BOT_USERNAME='${_TG_BOT}' && export CLINE_TELEGRAM_CWD='${_TG_CWD}' && export CLINE_TELEGRAM_TOOLS='${_TG_TOOLS}' && export CLINE_TELEGRAM_SYSTEM='${_TG_SYSTEM}' && nohup /usr/local/bin/cline-telegram-start.sh > /dev/null 2>&1 &"
 
     if [ -n "${CLINE_TELEGRAM_ALLOWED_USER_ID:-}" ]; then
         echo "[claude-world] Telegram connector: enabled (allowed user ${CLINE_TELEGRAM_ALLOWED_USER_ID}, cwd ${TELEGRAM_CWD})"
