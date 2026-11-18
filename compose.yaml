@@ -93,6 +93,8 @@ services:
       PASEO_RELAY_ENABLED: "0"
       # Extra DNS names the daemon accepts (comma separated), for reverse proxies.
       PASEO_HOSTNAMES: ""
+      # Paseo CLI version/channel: "latest" (auto-updates on boot), "beta", a semver pin, or "skip".
+      PASEO_VERSION: "latest"
       GIT_USER_NAME: CHANGE_ME_GIT_NAME
       GIT_USER_EMAIL: CHANGE_ME_GIT_EMAIL
       GITHUB_TOKEN: CHANGE_ME_GITHUB_TOKEN

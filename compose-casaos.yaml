@@ -71,6 +71,7 @@ services:
       PASEO_WEB_UI_ENABLED: "1"
       PASEO_RELAY_ENABLED: "0"
       PASEO_HOSTNAMES: ""
+      PASEO_VERSION: "latest"
       GIT_USER_NAME: CHANGE_ME_GIT_NAME
       GIT_USER_EMAIL: CHANGE_ME_GIT_EMAIL
       GITHUB_TOKEN: CHANGE_ME_GITHUB_TOKEN
@@ -169,6 +170,9 @@ services:
         - container: PASEO_HOSTNAMES
           description:
             en_us: "Extra DNS names the daemon accepts (comma separated), for reverse proxy setups."
+        - container: PASEO_VERSION
+          description:
+            en_us: "Paseo CLI version/channel: 'latest' (auto-updates on boot), 'beta', a pinned semver (e.g. '0.12.3'), or 'skip'."
         - container: GITHUB_TOKEN
           description:
             en_us: "GitHub fine-grained PAT (Settings → Developer settings → Personal access tokens)."

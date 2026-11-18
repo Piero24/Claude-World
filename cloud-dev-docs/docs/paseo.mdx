@@ -22,7 +22,7 @@ PASEO_PASSWORD: "change-me"      # required: see Security below
 docker compose up -d --force-recreate
 ```
 
-On boot `init.sh` installs the Paseo CLI, writes `/config/.paseo/config.json`, and starts the daemon. Paseo runs on port **6767**.
+On boot `init.sh` installs (or updates, controlled by `PASEO_VERSION`, default `latest`) the Paseo CLI, writes `/config/.paseo/config.json`, and starts the daemon. Paseo runs on port **6767**.
 
 :::tip[Just want one agent?]
 Leave `PASEO_AGENTS` empty and Paseo only sees your primary `AGENT`. Listing extra agents installs their CLIs and configures their credentials too.

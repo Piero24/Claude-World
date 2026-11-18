@@ -445,15 +445,38 @@ install_cline() {
 
 # ---- Paseo (remote / mobile control plane for your agents) ----
 # Installed via npm (binary: paseo). Only when PASEO_ENABLED=1.
+# PASEO_VERSION defaults to 'latest' (checks npm and upgrades on boot when a newer
+# release is published). Set to 'beta' for prereleases, a semver like '0.12.3' to pin,
+# or 'skip' to keep whatever is already installed.
 # The daemon itself is started later, after the agent CLIs and credentials.
+PASEO_CLI_VERSION="${PASEO_VERSION:-latest}"
 install_paseo() {
     if [ -d /config/.nvm ]; then
-        if ! su - "$USER" -c 'export HOME=/config && export NVM_DIR="/config/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && command -v paseo >/dev/null 2>&1'; then
-            echo "[claude-world] Installing Paseo CLI..."
-            su - "$USER" -c 'export HOME=/config && export NVM_DIR="/config/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && npm install -g @getpaseo/cli'
-            echo "[claude-world] Paseo CLI installed ($(su - "$USER" -c 'export HOME=/config && export NVM_DIR="/config/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && paseo --version 2>/dev/null | head -1' || echo unknown))."
+        INSTALLED_PASEO=$(su - "$USER" -c 'export HOME=/config && export NVM_DIR="/config/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && paseo --version 2>/dev/null | grep -oE "[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?" | head -1 || echo "none"')
+        if [ "$PASEO_CLI_VERSION" = "skip" ] && [ "$INSTALLED_PASEO" != "none" ]; then
+            echo "[claude-world] Paseo CLI already installed (${INSTALLED_PASEO}), skipping update (PASEO_VERSION=skip)."
+            return 0
+        fi
+
+        if [ "$PASEO_CLI_VERSION" = "latest" ] || [ "$PASEO_CLI_VERSION" = "beta" ]; then
+            REMOTE_PASEO=$(su - "$USER" -c 'export HOME=/config && export NVM_DIR="/config/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && npm view "@getpaseo/cli@'"${PASEO_CLI_VERSION}"'" version 2>/dev/null | tr -d "[:space:]"' || echo "")
+            if [ -n "$REMOTE_PASEO" ] && [ "$INSTALLED_PASEO" = "$REMOTE_PASEO" ]; then
+                echo "[claude-world] Paseo CLI already up to date (${INSTALLED_PASEO})."
+            elif [ -z "$REMOTE_PASEO" ] && [ "$INSTALLED_PASEO" != "none" ]; then
+                echo "[claude-world] Paseo CLI already installed (${INSTALLED_PASEO}); could not check npm for updates."
+            else
+                echo "[claude-world] Installing Paseo CLI (${PASEO_CLI_VERSION}${REMOTE_PASEO:+ -> ${REMOTE_PASEO}}, found: ${INSTALLED_PASEO})..."
+                su - "$USER" -c 'export HOME=/config && export NVM_DIR="/config/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && npm install -g "@getpaseo/cli@'"${PASEO_CLI_VERSION}"'"'
+                echo "[claude-world] Paseo CLI installed ($(su - "$USER" -c 'export HOME=/config && export NVM_DIR="/config/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && paseo --version 2>/dev/null | head -1' || echo unknown))."
+            fi
         else
-            echo "[claude-world] Paseo CLI already installed, skipping."
+            if [ "$INSTALLED_PASEO" != "$PASEO_CLI_VERSION" ]; then
+                echo "[claude-world] Installing Paseo CLI ${PASEO_CLI_VERSION} (found: ${INSTALLED_PASEO})..."
+                su - "$USER" -c 'export HOME=/config && export NVM_DIR="/config/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && npm install -g "@getpaseo/cli@'"${PASEO_CLI_VERSION}"'"'
+                echo "[claude-world] Paseo CLI ${PASEO_CLI_VERSION} installed."
+            else
+                echo "[claude-world] Paseo CLI ${PASEO_CLI_VERSION} already installed, skipping."
+            fi
         fi
     fi
 }
